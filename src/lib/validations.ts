@@ -1,53 +1,18 @@
-import { RegisterFormData, LoginFormData } from "@/type/types";
+import { z } from "zod";
 
-// Manual validation function for registration form data
-export function validateRegisterForm(data: RegisterFormData): any {
-  const errors: any = {};
+// Zod schema for registration form data
+export const registerSchema = z.object({
+  name: z.string().min(1, "Full name is required"),
+  email: z.email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  terms: z.literal(true, { message: "You must accept the terms" }),
+});
 
-  // Validate name
-  if (!data.name || data.name.trim().length === 0) {
-    errors.name = "Full name is required";
-  }
+// Zod schema for login form data
+export const loginSchema = z.object({
+  email: z.email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
 
-  // Validate email
-  if (!data.email || data.email.trim().length === 0) {
-    errors.email = "Email is required";
-  } else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(data.email)) {
-    errors.email = "Invalid email address";
-  }
-
-  // Validate password
-  if (!data.password || data.password.length === 0) {
-    errors.password = "Password is required";
-  } else if (data.password.length < 8) {
-    errors.password = "Password must be at least 8 characters";
-  }
-
-  // Validate terms acceptance
-  if (!data.terms) {
-    errors.terms = "You must accept the terms";
-  }
-
-  return errors;
-} 
-
-// Manual validation function for login form data
-export function validateLoginForm(data: LoginFormData): any {
-  const errors: any = {};
-
-  // Validate email
-  if (!data.email || data.email.trim().length === 0) {
-    errors.email = "Email is required";
-  } else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(data.email)) {
-    errors.email = "Invalid email address";
-  }
-
-  // Validate password
-  if (!data.password || data.password.length === 0) {
-    errors.password = "Password is required";
-  } else if (data.password.length < 8) {
-    errors.password = "Password must be at least 8 characters";
-  }
-
-  return errors;
-}
+export type RegisterFormData = z.infer<typeof registerSchema>;
+export type LoginFormData = z.infer<typeof loginSchema>;

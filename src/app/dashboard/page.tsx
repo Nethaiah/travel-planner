@@ -1,5 +1,11 @@
-import Dashboard from "@/components/dashboard"
+import { Navbar } from "@/components/navbar"
+import { DashboardPage } from "@/components/dashboard"
 
-export default function DashboardPage() {
-    return <Dashboard />
+export default function Dashboard() {
+    return (
+        <>
+            <Navbar />
+            <DashboardPage />
+        </>
+    )
 }

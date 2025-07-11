@@ -3,8 +3,9 @@
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 // Import manual validation function and types
-import { validateRegisterForm, validateLoginForm } from "@/lib/validations"
-import type { RegisterFormData, LoginFormData } from "@/type/types"
+import { registerSchema, loginSchema } from "@/lib/validations"
+import type { RegisterFormData, LoginFormData } from "@/lib/validations"
+import { headers } from "next/headers"
 
 // AUTH FUNCTIONS
 
@@ -13,8 +14,11 @@ export const register = async ({ name, email, password }: { name: string, email:
     // Build data object for validation (terms assumed true on server)
     const data: RegisterFormData = { name, email, password, terms: true }
 
-    // Validate data using manual function
-    const errors = validateRegisterForm(data)
+    // Validate data using Zod schema
+    const result = registerSchema.safeParse(data)
+    if (!result.success) {
+        throw new Error(Object.values(result.error.flatten().fieldErrors).flat().join("; "))
+    }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -26,11 +30,6 @@ export const register = async ({ name, email, password }: { name: string, email:
     if (existingUser) {
         // Throw error if user already exists
         throw new Error("User already exists")
-    }
-
-    if (Object.keys(errors).length > 0) {
-        // Throw error if validation fails
-        throw new Error(Object.values(errors).join("; "))
     }
 
     try {
@@ -52,12 +51,10 @@ export const login = async ({ email, password }: { email: string, password: stri
     // Build data object for validation
     const data: LoginFormData = { email, password }
 
-    // Validate data using manual function
-    const errors = validateLoginForm(data)
-
-    if (Object.keys(errors).length > 0) {
-        // Throw error if validation fails
-        throw new Error(Object.values(errors).join("; "))
+    // Validate data using Zod schema
+    const result = loginSchema.safeParse(data)
+    if (!result.success) {
+        throw new Error(Object.values(result.error.flatten().fieldErrors).flat().join("; "))
     }
 
     try {
@@ -72,5 +69,22 @@ export const login = async ({ email, password }: { email: string, password: stri
         throw err
     }
 }
+
+// Logout function
+export const logout = async () => {
+    await auth.api.signOut({
+        headers: await headers()
+    })
+}
+
+// Get session function
+export const getSession = async () => {
+    const session = await auth.api.getSession({
+        headers: await headers()
+    })
+    return session
+}
+
+
 
 

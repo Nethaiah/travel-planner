@@ -8,18 +8,21 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Mail, Lock, Eye, EyeOff, ArrowLeft, Chrome, Check } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import { Loader2, Mail, Lock, Eye, EyeOff, ArrowLeft, Chrome, Plane, AlertCircle} from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { validateLoginForm } from "@/lib/validations"
+import { loginSchema } from "@/lib/validations"
 import { login } from "@/app/server/userActions"
-import type { LoginFormData } from "@/type/types"
+import type { LoginFormData } from "@/lib/validations"
 
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [formErrors, setFormErrors] = useState<any>({})
+  const [showAlert, setShowAlert] = useState<boolean>(false)
   const router = useRouter()
 
   // Auto-dismiss field errors after 3 seconds
@@ -40,14 +43,23 @@ export function SignInForm() {
     },
   })
 
+  function handleAlert() {
+    setShowAlert(true)
+    setTimeout(() => {
+      setShowAlert(false)
+    }, 3000)
+  }
+
   async function onSubmit(data: LoginFormData) {
     setIsLoading(true)
+    setShowAlert(false)
     setError(null)
     setFormErrors({})
 
-    const errors = validateLoginForm(data)
-    setFormErrors(errors)
-    if (Object.keys(errors).length > 0) {
+    const result = loginSchema.safeParse(data)
+    if (!result.success) {
+      const errors = result.error.flatten().fieldErrors
+      setFormErrors(errors)
       setIsLoading(false)
       return
     }
@@ -55,81 +67,86 @@ export function SignInForm() {
       await login({ email: data.email, password: data.password })
       toast.success("Login successful! Welcome back 👋", {
         duration: 3000,
-        position: "top-center",
+        position: "bottom-right",
       })
       router.push("/dashboard")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Invalid email or password", {
-        duration: 3000,
-        position: "top-center",
-      })
+      handleAlert()
       setError(err instanceof Error ? err.message : "Invalid email or password")
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Google sign-in placeholder
+  const handleGoogleSignIn = () => {
+    toast.error("Google sign-in is not implemented in this demo.", {
+      duration: 3000,
+      position: "bottom-right",
+    })
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center py-8 px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center py-12 px-4">
+      <div className="w-full max-w-md space-y-8">
         {/* Back to Home */}
-        <div className="mb-8">
-          <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            <Link href="/">Back to Home</Link>
+        <div className="flex items-center">
+          <Button variant="ghost" size="sm" asChild className="text-slate-600 hover:text-slate-900">
+            <Link href="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Link>
           </Button>
         </div>
 
-        {/* Main Card */}
-        <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-2xl font-bold text-slate-900 mb-2">
-              Welcome back!
-            </CardTitle>
-            <CardDescription className="text-slate-600 text-base leading-relaxed">
-              Sign in to continue your travel planning journey
-            </CardDescription>
+        <Card className="border-0 shadow-sm bg-white">
+          <CardHeader className="text-center pb-6">
+            <div className="mx-auto w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4">
+              <Plane className="h-6 w-6 text-blue-600" />
+            </div>
+            <CardTitle className="text-2xl font-medium text-slate-900">Welcome back</CardTitle>
+            <CardDescription className="text-slate-600">Sign in to continue planning your adventures</CardDescription>
           </CardHeader>
 
-          <CardContent className="px-6 pb-6">
+          <CardContent className="space-y-6">
             {/* Google Sign In */}
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-white hover:bg-slate-50 border-slate-200 text-slate-700 font-medium h-12 text-sm transition-all duration-200 hover:border-slate-300"
-              onClick={() => {}}
+              className="w-full border-slate-200 text-slate-700 hover:bg-slate-50 bg-transparent"
+              onClick={handleGoogleSignIn}
               disabled={isLoading}
             >
-              <Chrome className="mr-3 h-4 w-4 text-blue-500" />
+              <Chrome className="mr-2 h-4 w-4" />
               Continue with Google
             </Button>
 
             {/* Divider */}
-            <div className="relative my-6">
+            <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
+                <span className="w-full border-t border-slate-200" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-4 text-slate-500">Or continue with email</span>
+                <span className="bg-white px-4 text-slate-500">or</span>
               </div>
             </div>
 
             {/* Email Sign In Form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-slate-700">
-                  Email address
+                  Email
                 </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     id="email"
                     {...data("email")}
-                    type="email"
+                    type="text"
                     placeholder="Enter your email"
                     disabled={isLoading}
                     autoComplete="email"
-                    className="pl-10 h-12 border-slate-200 focus:border-violet-500 focus:ring-violet-500 focus:ring-1 transition-all duration-200"
+                    className="pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 {/* Show email error if present */}
@@ -146,22 +163,22 @@ export function SignInForm() {
                     id="password"
                     {...data("password")}
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
+                    placeholder="Enter your password"            
                     disabled={isLoading}
                     autoComplete="current-password"
-                    className="pl-10 pr-10 h-12 border-slate-200 focus:border-violet-500 focus:ring-violet-500 focus:ring-1 transition-all duration-200"
+                    className="pl-10 pr-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
                   />
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="link"
                     size="sm"
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-slate-100 transition-colors"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-slate-400" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="h-4 w-4 text-slate-400" />
+                      <Eye className="h-4 w-4" />
                     )}
                   </Button>
                 </div>
@@ -169,75 +186,39 @@ export function SignInForm() {
                 {formErrors.password && <p className="text-sm text-red-600">{formErrors.password}</p>}
               </div>
 
-              {/* Forgot Password */}
-              <div className="flex items-center justify-end pt-2">
-                <button type="button" className="text-sm text-violet-600 hover:text-violet-700 font-medium underline underline-offset-2 transition-colors">
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-end">
+                <Link href="#" className="text-sm text-blue-600 hover:text-blue-500">
                   Forgot password?
-                </button>
+                </Link>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-12 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign In"
-                )}
+              {showAlert && (
+                <Alert variant="destructive" className="border-red-200 bg-red-50 flex justify-center">
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  <AlertDescription className="text-red-700">{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
 
+            <Separator />
+
             {/* Sign Up Link */}
-            <div className="text-center mt-6 pt-4 border-t border-slate-100">
-              <p className="text-slate-600 text-sm">
+            <div className="text-center">
+              <p className="text-slate-600">
                 Don't have an account?{" "}
-                <button type="button" className="font-semibold text-violet-600 hover:text-violet-700 transition-colors">
-                  <Link href="/register" className="ml-1">
-                    Sign up for free
-                  </Link>
-                </button>
+                <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+                  Sign up
+                </Link>
               </p>
             </div>
           </CardContent>
         </Card>
-
-        {/* Benefits Section */}
-        <div className="mt-6 bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-          <h3 className="font-semibold text-slate-900 text-center mb-4 text-sm">
-            Welcome back to your journey:
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center space-x-2">
-              <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Check className="h-3 w-3 text-emerald-600" />
-              </div>
-              <span className="text-xs text-slate-700">Your saved trips</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Check className="h-3 w-3 text-emerald-600" />
-              </div>
-              <span className="text-xs text-slate-700">Shared itineraries</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Check className="h-3 w-3 text-emerald-600" />
-              </div>
-              <span className="text-xs text-slate-700">Expense history</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Check className="h-3 w-3 text-emerald-600" />
-              </div>
-              <span className="text-xs text-slate-700">Personal preferences</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )

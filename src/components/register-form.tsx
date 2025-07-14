@@ -13,10 +13,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { Loader2, User, Mail, Lock, Eye, EyeOff, ArrowLeft, Chrome, Plane, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { registerSchema } from "@/lib/validations"
+import { registerSchema, type RegisterFormData } from "@/lib/validations"
 import { useRouter } from "next/navigation"
 import { register } from "@/app/server/userActions"
-import type { RegisterFormData } from "@/lib/validations"
 import { toast } from "sonner"
 
 export function SignUpForm() {
@@ -37,15 +36,13 @@ export function SignUpForm() {
       return () => clearTimeout(timer)
     }
   }, [formErrors])
-
-  // Use a local form type for react-hook-form, cast to RegisterFormData for validation
-  type LocalFormType = { name: string; email: string; password: string; terms: boolean };
-  const { register: data, handleSubmit, setValue, getValues, reset } = useForm<LocalFormType>({
+  
+  const { register: data, handleSubmit, setValue, getValues, reset } = useForm<RegisterFormData>({
     defaultValues: {
       name: "",
       email: "",
       password: "",
-      terms: false,
+      terms: true,
     },
   })
 
@@ -67,7 +64,7 @@ export function SignUpForm() {
   }
   const passwordStrength = getPasswordStrength(password)
 
-  async function onSubmit(data: LocalFormType) {
+  async function onSubmit(data: RegisterFormData) {
     setIsLoading(true)
     setShowAlert(false)
     setError(null)

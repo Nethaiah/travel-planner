@@ -8,10 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, MapPin, Calendar, CheckCircle, Clock } from "lucide-react"
 import { useSession } from "@/lib/auth-client"
 import Link from "next/link"
+import { getTripsByUser } from "@/app/server/tripActions"
+import { useState } from "react"
 
 export function DashboardPage() {
   const router = useRouter()
   const { data: session, isPending } = useSession()
+  const [trips, setTrips] = useState<any[]>([])
+  const [loadingTrips, setLoadingTrips] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isPending && !session?.user) {
@@ -19,45 +24,43 @@ export function DashboardPage() {
     }
   }, [isPending, session, router])
 
-  // Static placeholder trips array
-  const trips = [
-    {
-      id: 1,
-      title: "Sample Trip to Paris",
-      description: "Experience the beauty of Paris with this amazing trip!",
-      destination: "Paris, France",
-      start_date: "2024-08-01",
-      end_date: "2024-08-07",
-      status: "planned",
-      cover_image: "/simon-english-48nerZQCHgo-unsplash.jpg"
-    },
-    {
-      id: 2,
-      title: "Adventure in Tokyo",
-      description: "Explore the vibrant city of Tokyo and its culture.",
-      destination: "Tokyo, Japan",
-      start_date: "2024-09-10",
-      end_date: "2024-09-20",
-      status: "ongoing",
-      cover_image: "/simon-english-48nerZQCHgo-unsplash.jpg"
-    },
-    {
-      id: 3,
-      title: "Relaxing in Bali",
-      description: "Enjoy the beaches and tranquility of Bali.",
-      destination: "Bali, Indonesia",
-      start_date: "2024-07-15",
-      end_date: "2024-07-22",
-      status: "completed",
-      cover_image: "/simon-english-48nerZQCHgo-unsplash.jpg"
+  useEffect(() => {
+    async function fetchTrips() {
+      if (session?.user?.id) {
+        setLoadingTrips(true)
+        setError(null)
+        try {
+          // getTripsByUser is a server action, so we need to call it via an API route or refactor it for client use
+          const res = await fetch("/api/trips")
+          if (!res.ok) throw new Error("Failed to fetch trips")
+          const data = await res.json()
+          setTrips(data.trips)
+        } catch (err: any) {
+          setError(err.message || "Failed to fetch trips")
+        } finally {
+          setLoadingTrips(false)
+        }
+      }
     }
-  ]
+    fetchTrips()
+  }, [session?.user?.id])
+
+  // Compute status dynamically
+  const tripsWithStatus = trips.map((trip) => {
+    const now = new Date()
+    const start = new Date(trip.startDate || trip.start_date)
+    const end = new Date(trip.endDate || trip.end_date)
+    let status = "planned"
+    if (now > end) status = "completed"
+    else if (now >= start && now <= end) status = "ongoing"
+    return { ...trip, status }
+  })
 
   const stats = {
-    total: trips.length,
-    planned: trips.filter((trip) => trip.status === "planned").length,
-    ongoing: trips.filter((trip) => trip.status === "ongoing").length,
-    completed: trips.filter((trip) => trip.status === "completed").length,
+    total: tripsWithStatus.length,
+    planned: tripsWithStatus.filter((trip) => trip.status === "planned").length,
+    ongoing: tripsWithStatus.filter((trip) => trip.status === "ongoing").length,
+    completed: tripsWithStatus.filter((trip) => trip.status === "completed").length,
   }
 
   return (
@@ -123,7 +126,11 @@ export function DashboardPage() {
         <div className="mb-8">
           <h2 className="text-2xl font-light text-slate-900 mb-6">Your Trips</h2>
 
-          {trips.length === 0 ? (
+          {loadingTrips ? (
+            <div className="text-center py-12 text-slate-500">Loading trips...</div>
+          ) : error ? (
+            <div className="text-center py-12 text-red-500">{error}</div>
+          ) : tripsWithStatus.length === 0 ? (
             <Card className="border-0 shadow-sm bg-white text-center py-12">
               <CardHeader>
                 <MapPin className="mx-auto h-12 w-12 text-slate-300 mb-4" />
@@ -141,7 +148,7 @@ export function DashboardPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trips.map((trip) => (
+              {tripsWithStatus.map((trip) => (
                 <TripCard key={trip.id} trip={trip} />
               ))}
             </div>

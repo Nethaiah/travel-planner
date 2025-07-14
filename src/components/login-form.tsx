@@ -13,9 +13,8 @@ import { Separator } from "@/components/ui/separator"
 import { Loader2, Mail, Lock, Eye, EyeOff, ArrowLeft, Chrome, Plane, AlertCircle} from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { loginSchema } from "@/lib/validations"
+import { loginSchema, type LoginFormData } from "@/lib/validations"
 import { login } from "@/app/server/userActions"
-import type { LoginFormData } from "@/lib/validations"
 
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false)
@@ -36,7 +35,7 @@ export function SignInForm() {
   }, [formErrors])
 
   // useForm for input state management
-  const { register: data, handleSubmit, setValue, getValues, reset } = useForm<{ email: string; password: string }>({
+  const { register, handleSubmit, setValue, getValues, reset } = useForm<LoginFormData>({
     defaultValues: {
       email: "",
       password: "",
@@ -141,7 +140,7 @@ export function SignInForm() {
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     id="email"
-                    {...data("email")}
+                    {...register("email")}
                     type="text"
                     placeholder="Enter your email"
                     disabled={isLoading}
@@ -161,7 +160,7 @@ export function SignInForm() {
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     id="password"
-                    {...data("password")}
+                    {...register("password")}
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"            
                     disabled={isLoading}

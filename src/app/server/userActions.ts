@@ -72,17 +72,27 @@ export const login = async ({ email, password }: { email: string, password: stri
 
 // Logout function
 export const logout = async () => {
-    await auth.api.signOut({
-        headers: await headers()
-    })
+    try {
+        await auth.api.signOut({
+            headers: await headers()
+        })
+    } catch (err) {
+        console.error(err)
+        throw err
+    }
 }
 
 // Get session function
 export const getSession = async () => {
-    const session = await auth.api.getSession({
-        headers: await headers()
-    })
-    return session
+    try {
+        const session = await auth.api.getSession({
+            headers: await headers()
+        })
+        return session
+    } catch (err) {
+        console.error(err)
+        throw err
+    }
 }
 
 

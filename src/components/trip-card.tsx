@@ -7,15 +7,20 @@ import { Calendar, MapPin, MoreHorizontal, Edit, Trash2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import Image from "next/image"
-import { format } from "date-fns"
+import { format, isValid } from "date-fns"
 import { useState } from "react"
 
 export function TripCard({ trip }: { trip: any }) {
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const startDate = new Date(trip.start_date)
-  const endDate = new Date(trip.end_date)
-  const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  const startDate = new Date(trip.startDate || trip.start_date)
+  const endDate = new Date(trip.endDate || trip.end_date)
+  const duration = isValid(startDate) && isValid(endDate)
+    ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    : null
+
+  const startDateStr = isValid(startDate) ? format(startDate, "MMM d") : "Invalid date"
+  const endDateStr = isValid(endDate) ? format(endDate, "MMM d, yyyy") : "Invalid date"
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -46,8 +51,8 @@ export function TripCard({ trip }: { trip: any }) {
   return (
     <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white overflow-hidden">
       <div className="relative h-48 w-full bg-slate-100">
-        {trip.cover_image ? (
-          <Image src={trip.cover_image} alt={trip.title} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" priority className="object-cover" />
+        {(trip.cover_image || trip.coverImage) ? (
+          <Image src={trip.cover_image || trip.coverImage} alt={trip.title} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" priority className="object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-blue-100 to-slate-100 flex items-center justify-center">
             <MapPin className="h-8 w-8 text-slate-400" />
@@ -60,7 +65,7 @@ export function TripCard({ trip }: { trip: any }) {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="border-0">
               <DropdownMenuItem asChild>
                 <Link href={`/trips/${trip.id}/edit`} className="flex items-center">
                   <Edit className="mr-2 h-4 w-4" />
@@ -68,7 +73,7 @@ export function TripCard({ trip }: { trip: any }) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem className="text-red-600 flex items-center" onClick={handleDelete} disabled={isDeleting}>
-                <Trash2 className="mr-2 h-4 w-4" />
+                <Trash2 className="mr-2 h-4 w-4 text-red-600" />
                 {isDeleting ? "Deleting..." : "Delete Trip"}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -95,7 +100,7 @@ export function TripCard({ trip }: { trip: any }) {
           <div className="flex items-center text-sm text-slate-600">
             <Calendar className="mr-2 h-4 w-4" />
             <span>
-              {format(startDate, "MMM d")} - {format(endDate, "MMM d, yyyy")} ({duration} days)
+              {startDateStr} - {endDateStr}{duration ? ` (${duration} days)` : ""}
             </span>
           </div>
         </div>

@@ -24,6 +24,7 @@ model User {
   updatedAt     DateTime
   sessions      Session[]
   accounts      Account[]
+  trips         Trip[]
 
   @@unique([email])
   @@map("user")
@@ -72,4 +73,36 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+}
+
+model Trip {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  destination String
+  startDate   DateTime
+  endDate     DateTime
+  budget      Float?
+  coverImage  String?
+  images      Trip_Image[]
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lat         Float? // Latitude
+  lon         Float? // Longitude
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("trip")
+}
+
+model Trip_Image {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  order     Int      @default(0)
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("trip_image")
 }

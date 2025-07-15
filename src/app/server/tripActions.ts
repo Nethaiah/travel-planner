@@ -138,11 +138,19 @@ export async function getTripById(tripId: string) {
       where: { id: tripId },
       include: { 
         images: true,
+        itinerary_days: {
+          include: {
+            activities: true
+          },
+          orderBy: {
+            day_number: 'asc'
+          }
+        }
       },
     });
+    
     return trip;
   } catch (error) {
-    console.error("Database error fetching trip by id:", error);
-    throw new Error("Failed to fetch trip. Please try again.");
+      throw new Error("Failed to fetch trip. Please try again.");
   }
 }

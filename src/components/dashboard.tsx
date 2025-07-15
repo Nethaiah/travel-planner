@@ -71,7 +71,7 @@ export function DashboardPage() {
       <div className="container mx-auto py-8 px-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
           <div>
-            <h1 className="text-3xl font-light text-slate-900 mb-2">Welcome back, {session?.user?.name}</h1>
+            <h1 className="text-3xl font-medium text-slate-900 mb-2">Welcome back, {session?.user?.name}</h1>
             <p className="text-slate-600">Here's an overview of your travel plans</p>
           </div>
           <Button asChild className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700">
@@ -127,7 +127,7 @@ export function DashboardPage() {
 
         {/* Trips Grid */}
         <div className="mb-8">
-          <h2 className="text-2xl font-light text-slate-900 mb-6">Your Trips</h2>
+          <h2 className="text-2xl font-medium text-slate-900 mb-6">Your Trips</h2>
 
           {loadingTrips ? (
             <div className="text-center py-12 text-slate-500">Loading trips...</div>

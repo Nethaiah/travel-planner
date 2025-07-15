@@ -289,12 +289,12 @@ export function CreateTripForm() {
     <div className="min-h-screen bg-slate-50 pt-16">
       <div className="container mx-auto py-8 px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-light text-slate-900 mb-2">Create New Trip</h1>
+          <h1 className="text-3xl font-medium text-slate-900 mb-2">Create New Trip</h1>
           <p className="text-slate-600">Start planning your next adventure</p>
         </div>
         <Card className="w-full max-w-2xl mx-auto border-0 shadow-sm bg-white">
           <CardHeader>
-            <CardTitle className="text-2xl font-light text-slate-900">Create New Trip</CardTitle>
+            <CardTitle className="text-2xl font-medium text-slate-900">Create New Trip</CardTitle>
             <CardDescription className="text-slate-600">Plan your next adventure by filling out the details below</CardDescription>
           </CardHeader>
           <CardContent>

@@ -108,7 +108,7 @@ export function TripCard({ trip }: { trip: any }) {
 
       <CardFooter className="pt-0">
         <Button asChild className="w-full bg-blue-600 hover:bg-blue-700">
-          <Link href={`/trips/${trip.id}`}>View Details</Link>
+          <Link href={`/trip/${trip.id}`}>View Details</Link>
         </Button>
       </CardFooter>
     </Card>

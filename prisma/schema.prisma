@@ -76,7 +76,7 @@ model Verification {
 }
 
 model Trip {
-  id          String      @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   description String?
   destination String
@@ -86,11 +86,20 @@ model Trip {
   coverImage  String?
   images      Trip_Image[]
   userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   lat         Float? // Latitude
   lon         Float? // Longitude
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  placeId     String? // LocationIQ place_id
+  osmId       String? // OSM id
+  osmType     String? // OSM type
+  class       String? // LocationIQ class
+  type        String? // LocationIQ type
+  importance  Float? // LocationIQ importance
+  icon        String? // LocationIQ icon URL
+  displayName String? // LocationIQ display_name
+  addressJson Json? // Full address object (optional)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@map("trip")
 }

@@ -40,12 +40,40 @@ export const tripSchema = z.object({
   ),
   endDate: z.date().refine(
     (d) => d > new Date(),
-    { message: "End date must be after start date" }
+    { message: "Start date must be in the future" }
   ),
   budget: z.number().min(0, "Budget must be 0 or greater").optional(),
-  coverImage: z.url("Cover image must be a valid URL").optional(),
+  coverImage: z.url("Cover image must be a valid URL"),
   images: z.array(z.url("Each image must be a valid URL")).min(1, "At least one image is required"),
   lat: z.number().refine((v) => v !== undefined && v !== null, { message: "Latitude is required" }),
   lon: z.number().refine((v) => v !== undefined && v !== null, { message: "Longitude is required" }),
-});
+  // --- LocationIQ fields ---
+  placeId: z.string().optional(),
+  osmId: z.string().optional(),
+  osmType: z.string().optional(),
+  class: z.string().optional(),
+  type: z.string().optional(),
+  importance: z.number().optional(),
+  icon: z.string().optional(),
+  displayName: z.string().optional(),
+  addressJson: z.any().optional(),
+}).refine(
+  (data) => data.endDate > data.startDate,
+  {
+    message: "End date must be after start date",
+    path: ["endDate"], // This will show the error on the endDate field
+  }
+);
 export type TripFormData = z.infer<typeof tripSchema>;
+
+// Zod schema for activity creation form data
+export const activitySchema = z.object({
+  title: z.string().min(2, "Title is required"),
+  description: z.string().max(500).optional(),
+  location: z.string().max(255).optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  cost: z.number().min(0, "Cost must be 0 or greater").optional(),
+  category: z.enum(["activity", "accommodation", "food", "transport", "other"]),
+});
+export type ActivityFormData = z.infer<typeof activitySchema>;

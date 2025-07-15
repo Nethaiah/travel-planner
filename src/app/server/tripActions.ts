@@ -35,14 +35,15 @@ export async function searchDestinations(params: AutocompleteParams): Promise<Lo
     )
 
     if (!response.ok) {
-      throw new Error(`LocationIQ API error: ${response.status} ${response.statusText}`)
+      console.error("LocationIQ API error:", response.status, response.statusText)
+      return []
     }
 
     const data = await response.json()
     return data
   } catch (error) {
     console.error("Error fetching destinations from LocationIQ:", error)
-    throw new Error("Failed to fetch destination suggestions")
+    return []
   }
 }
 
@@ -90,6 +91,15 @@ export async function createTrip(data: TripFormData & { userId: string }) {
         lat: data.lat ?? 0,
         lon: data.lon ?? 0,
         description: tripData.description ?? "No description provided",
+        placeId: data.placeId ?? null,
+        osmId: data.osmId ?? null,
+        osmType: data.osmType ?? null,
+        class: data.class ?? null,
+        type: data.type ?? null,
+        importance: data.importance ?? null,
+        icon: data.icon ?? null,
+        displayName: data.displayName ?? null,
+        addressJson: data.addressJson ?? null,
         images: {
           create: (images || []).map((url, idx) => ({
             url,
@@ -118,5 +128,21 @@ export async function getTripsByUser(userId: string) {
   } catch (error) {
     console.error("Database error fetching trips:", error);
     throw new Error("Failed to fetch trips. Please try again.");
+  }
+}
+
+// Fetch a single trip by id (with images and all LocationIQ fields)
+export async function getTripById(tripId: string) {
+  try {
+    const trip = await prisma.trip.findUnique({
+      where: { id: tripId },
+      include: { 
+        images: true,
+      },
+    });
+    return trip;
+  } catch (error) {
+    console.error("Database error fetching trip by id:", error);
+    throw new Error("Failed to fetch trip. Please try again.");
   }
 }

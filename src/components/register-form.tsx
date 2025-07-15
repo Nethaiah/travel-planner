@@ -17,6 +17,7 @@ import { registerSchema, type RegisterFormData } from "@/lib/validations"
 import { useRouter } from "next/navigation"
 import { register } from "@/app/server/userActions"
 import { toast } from "sonner"
+import { zodResolver } from "@hookform/resolvers/zod"
 
 export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false)
@@ -25,19 +26,18 @@ export function SignUpForm() {
   const [showAlert, setShowAlert] = useState<boolean>(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [password, setPassword] = useState("")
-  const [formErrors, setFormErrors] = useState<any>({})
   const router = useRouter()
 
+  // Auto-dismiss server error after 3 seconds
   useEffect(() => {
-    if (Object.keys(formErrors).length > 0) {
-      const timer = setTimeout(() => {
-        setFormErrors({})
-      }, 3000)
+    if (error) {
+      const timer = setTimeout(() => setError(null), 3000)
       return () => clearTimeout(timer)
     }
-  }, [formErrors])
+  }, [error])
   
-  const { register: data, handleSubmit, setValue, getValues, reset } = useForm<RegisterFormData>({
+  const { register: data, handleSubmit, setValue, getValues, reset, formState: { errors } } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       name: "",
       email: "",
@@ -64,22 +64,15 @@ export function SignUpForm() {
   }
   const passwordStrength = getPasswordStrength(password)
 
-  async function onSubmit(data: RegisterFormData) {
+  async function onSubmit(formData: RegisterFormData) {
     setIsLoading(true)
     setShowAlert(false)
     setError(null)
-    setFormErrors({})
 
     // Cast to RegisterFormData for validation (terms: true)
-    const formData = { ...data, terms: acceptTerms } as unknown as RegisterFormData
-    const result = registerSchema.safeParse(formData)
-    setFormErrors(result.success ? {} : result.error.flatten().fieldErrors)
-    if (!result.success) {
-      setIsLoading(false)
-      return
-    }
+    const dataWithTerms = { ...formData, terms: acceptTerms } as RegisterFormData
     try {
-      await register({ name: formData.name, email: formData.email, password: formData.password })
+      await register({ name: dataWithTerms.name, email: dataWithTerms.email, password: dataWithTerms.password })
       toast.success("Account created! Welcome 🎉", {
         duration: 3000,
         position: "bottom-right",
@@ -164,7 +157,7 @@ export function SignUpForm() {
                     className="pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
-                {formErrors.name && <p className="text-sm text-red-500">{formErrors.name}</p>}
+                {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-2">
@@ -183,7 +176,7 @@ export function SignUpForm() {
                     className="pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
-                {formErrors.email && <p className="text-sm text-red-600">{formErrors.email}</p>}
+                {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
               </div>
 
               <div className="space-y-2">
@@ -237,7 +230,7 @@ export function SignUpForm() {
                     <Progress value={passwordStrength} className="h-1" />
                   </div>
                 )}
-                {formErrors.password && <p className="text-sm text-red-600">{formErrors.password}</p>}
+                {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
               </div>
 
               {/* Terms and Conditions */}
@@ -262,7 +255,7 @@ export function SignUpForm() {
                   </Link>
                 </Label>
               </div>
-              {formErrors.terms && <p className="text-sm text-red-600">{formErrors.terms}</p>}
+              {errors.terms && <p className="text-sm text-red-600">{errors.terms.message}</p>}
               {showAlert && (
                 <Alert variant="destructive" className="border-red-200 bg-red-50 flex justify-center">
                   <AlertCircle className="h-4 w-4 mr-2" />
@@ -271,7 +264,7 @@ export function SignUpForm() {
               )}
               <Button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                 disabled={isLoading || !acceptTerms}
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -15,27 +15,25 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { loginSchema, type LoginFormData } from "@/lib/validations"
 import { login } from "@/app/server/userActions"
+import { zodResolver } from "@hookform/resolvers/zod"
 
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
-  const [formErrors, setFormErrors] = useState<any>({})
   const [showAlert, setShowAlert] = useState<boolean>(false)
   const router = useRouter()
 
-  // Auto-dismiss field errors after 3 seconds
+  // Auto-dismiss server error after 3 seconds
   useEffect(() => {
-    if (Object.keys(formErrors).length > 0) {
-      const timer = setTimeout(() => {
-        setFormErrors({})
-      }, 3000)
+    if (error) {
+      const timer = setTimeout(() => setError(null), 3000)
       return () => clearTimeout(timer)
     }
-  }, [formErrors])
+  }, [error])
 
-  // useForm for input state management
-  const { register, handleSubmit, setValue, getValues, reset } = useForm<LoginFormData>({
+  const { register, handleSubmit, setValue, getValues, reset, formState: { errors } } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
@@ -53,15 +51,6 @@ export function SignInForm() {
     setIsLoading(true)
     setShowAlert(false)
     setError(null)
-    setFormErrors({})
-
-    const result = loginSchema.safeParse(data)
-    if (!result.success) {
-      const errors = result.error.flatten().fieldErrors
-      setFormErrors(errors)
-      setIsLoading(false)
-      return
-    }
     try {
       await login({ email: data.email, password: data.password })
       toast.success("Login successful! Welcome back 👋", {
@@ -149,7 +138,7 @@ export function SignInForm() {
                   />
                 </div>
                 {/* Show email error if present */}
-                {formErrors.email && <p className="text-sm text-red-600">{formErrors.email}</p>}
+                {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
               </div>
 
               <div className="space-y-2">
@@ -182,7 +171,7 @@ export function SignInForm() {
                   </Button>
                 </div>
                 {/* Show password error if present */}
-                {formErrors.password && <p className="text-sm text-red-600">{formErrors.password}</p>}
+                {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
               </div>
 
               {/* Remember Me & Forgot Password */}
@@ -199,7 +188,7 @@ export function SignInForm() {
                 </Alert>
               )}
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white  " disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>

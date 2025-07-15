@@ -8,36 +8,49 @@ import { Button } from "@/components/ui/button"
 import { Calendar, MapPin, DollarSign, Edit, Plus, Clock, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
-import { AddActivityForm } from "@/components/add-activity-form"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getTripById } from "@/app/server/tripActions"
+import { AddActivityForm } from "@/components/add-activity-form"
+import { Navbar } from "@/components/navbar"
 
 interface TripPageProps {
   params: { id: string }
 }
 
-export default function TripPage({ params }: TripPageProps) {
+export type { TripPageProps }
+
+export function TripPage({ params }: TripPageProps) {
   const tripId = params.id
+  const [trip, setTrip] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [showAddActivity, setShowAddActivity] = useState<string | null>(null)
-  const { state, actions } = useTravel()
   const router = useRouter()
-  const tripWithItinerary = actions.getTripWithItinerary(tripId)
 
   useEffect(() => {
-    // if (!state.isAuthenticated) {
-    //   router.push("/sign-in")
-    // }
-  }, [state.isAuthenticated, router])
+    async function fetchTrip() {
+      setLoading(true)
+      try {
+        const tripData = await getTripById(tripId)
+        setTrip(tripData)
+      } catch (e) {
+        setTrip(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTrip()
+  }, [tripId])
 
-  // if (!state.isAuthenticated || !tripWithItinerary) {
-  //   return null
-  // }
-
-  if (!tripWithItinerary) {
-    return null
+  if (loading) {
+    return <div className="container mx-auto py-8 px-4">Loading trip...</div>
   }
 
-  const startDate = new Date(tripWithItinerary.start_date)
-  const endDate = new Date(tripWithItinerary.end_date)
+  if (!trip) {
+    return <div className="container mx-auto py-8 px-4">Trip not found.</div>
+  }
+
+  const startDate = new Date(trip.startDate)
+  const endDate = new Date(trip.endDate)
   const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
 
   const getStatusColor = (status: string) => {
@@ -55,47 +68,49 @@ export default function TripPage({ params }: TripPageProps) {
 
   const handleDeleteActivity = async (activityId: string) => {
     if (confirm("Are you sure you want to delete this activity?")) {
-      await actions.deleteActivity(activityId)
+      // await actions.deleteActivity(activityId) // This line was removed as per the new_code
     }
   }
 
   return (
+    <>
+    <Navbar />
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
       {/* Trip Header */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{tripWithItinerary.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{trip.title}</h1>
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
               <div className="flex items-center">
                 <MapPin className="mr-1 h-4 w-4" />
-                {tripWithItinerary.destination}
+                {trip.destination}
               </div>
               <div className="flex items-center">
                 <Calendar className="mr-1 h-4 w-4" />
                 {format(startDate, "MMM d")} - {format(endDate, "MMM d, yyyy")} ({duration} days)
               </div>
-              <Badge className={getStatusColor(tripWithItinerary.status)}>
-                {tripWithItinerary.status.charAt(0).toUpperCase() + tripWithItinerary.status.slice(1)}
+              <Badge className={getStatusColor(trip.status)}>
+                {trip.status?.charAt(0).toUpperCase() + trip.status?.slice(1)}
               </Badge>
             </div>
           </div>
           <Button asChild className="mt-4 sm:mt-0">
-            <Link href={`/trips/${tripWithItinerary.id}/edit`}>
+            <Link href={`/trips/${trip.id}/edit`}>
               <Edit className="mr-2 h-4 w-4" />
               Edit Trip
             </Link>
           </Button>
         </div>
 
-        {tripWithItinerary.description && (
-          <p className="text-gray-600 dark:text-gray-300 mb-4">{tripWithItinerary.description}</p>
+        {trip.description && (
+          <p className="text-gray-600 dark:text-gray-300 mb-4">{trip.description}</p>
         )}
 
-        {tripWithItinerary.budget && (
+        {trip.budget && (
           <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
             <DollarSign className="mr-1 h-4 w-4" />
-            Budget: ${tripWithItinerary.budget.toLocaleString()}
+            Budget: ${trip.budget.toLocaleString()}
           </div>
         )}
       </div>
@@ -123,16 +138,72 @@ export default function TripPage({ params }: TripPageProps) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Status:</span>
-                    <Badge className={getStatusColor(tripWithItinerary.status)}>
-                      {tripWithItinerary.status.charAt(0).toUpperCase() + tripWithItinerary.status.slice(1)}
+                    <Badge className={getStatusColor(trip.status)}>
+                      {trip.status?.charAt(0).toUpperCase() + trip.status?.slice(1)}
                     </Badge>
                   </div>
-                  {tripWithItinerary.budget && (
+                  {trip.budget && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Budget:</span>
-                      <span className="font-medium">${tripWithItinerary.budget.toLocaleString()}</span>
+                      <span className="font-medium">${trip.budget.toLocaleString()}</span>
                     </div>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Destination Info</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {trip.icon && (
+                    <img src={trip.icon} alt="Place icon" className="h-6 w-6 mb-2" />
+                  )}
+                  <div>
+                    <span className="text-muted-foreground">Location:</span>
+                    <p className="font-medium">{trip.destination}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Full Address:</span>
+                    <p className="font-medium text-sm">{trip.displayName}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Country:</span>
+                    <p className="font-medium text-sm">{trip.addressJson?.country || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">City:</span>
+                    <p className="font-medium text-sm">{trip.addressJson?.city || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">State/Region:</span>
+                    <p className="font-medium text-sm">{trip.addressJson?.state || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Coordinates:</span>
+                    <p className="font-medium text-sm">
+                      {trip.lat?.toFixed(4)}, {trip.lon?.toFixed(4)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Place Type:</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      {trip.class && (
+                        <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-semibold uppercase tracking-wide">{trip.class}</span>
+                      )}
+                      {trip.type && (
+                        <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-semibold uppercase tracking-wide">{trip.type}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Importance:</span>
+                    <p className="font-medium text-sm">
+                      {trip.importance !== undefined ? trip.importance.toFixed(2) : "N/A"}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -146,35 +217,13 @@ export default function TripPage({ params }: TripPageProps) {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total Activities:</span>
                     <span className="font-medium">
-                      {tripWithItinerary.itinerary_days?.reduce((total, day) => total + day.activities.length, 0) || 0}
+                      {trip.itinerary_days?.reduce((total: number, day: any) => total + day.activities.length, 0) || 0}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Days Planned:</span>
-                    <span className="font-medium">{tripWithItinerary.itinerary_days?.length || 0}</span>
+                    <span className="font-medium">{trip.itinerary_days?.length || 0}</span>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Destination Info</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-muted-foreground">Location:</span>
-                    <p className="font-medium">{tripWithItinerary.destination}</p>
-                  </div>
-                  {tripWithItinerary.destination_lat && tripWithItinerary.destination_lng && (
-                    <div>
-                      <span className="text-muted-foreground">Coordinates:</span>
-                      <p className="font-medium text-sm">
-                        {tripWithItinerary.destination_lat.toFixed(4)}, {tripWithItinerary.destination_lng.toFixed(4)}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -188,9 +237,9 @@ export default function TripPage({ params }: TripPageProps) {
             <p className="text-gray-600 dark:text-gray-300 mt-1">Plan your activities for each day</p>
           </div>
 
-          {tripWithItinerary.itinerary_days && tripWithItinerary.itinerary_days.length > 0 ? (
+          {trip.itinerary_days && trip.itinerary_days.length > 0 ? (
             <div className="space-y-6">
-              {tripWithItinerary.itinerary_days.map((day) => (
+              {trip.itinerary_days.map((day: any) => (
                 <Card key={day.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -215,11 +264,11 @@ export default function TripPage({ params }: TripPageProps) {
                   {showAddActivity === day.id && (
                     <CardContent className="border-t">
                       <div className="pt-4">
-                        <AddActivityForm
+                        { <AddActivityForm
                           dayId={day.id}
                           onSuccess={() => setShowAddActivity(null)}
                           onCancel={() => setShowAddActivity(null)}
-                        />
+                        />}
                       </div>
                     </CardContent>
                   )}
@@ -227,7 +276,7 @@ export default function TripPage({ params }: TripPageProps) {
                   {day.activities && day.activities.length > 0 && (
                     <CardContent className={showAddActivity === day.id ? "border-t" : ""}>
                       <div className="space-y-3">
-                        {day.activities.map((activity) => (
+                        {day.activities.map((activity: any) => (
                           <div
                             key={activity.id}
                             className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
@@ -325,13 +374,13 @@ export default function TripPage({ params }: TripPageProps) {
                   <div className="text-left max-w-md mx-auto space-y-2 text-sm text-gray-600 dark:text-gray-300">
                     <div className="flex items-center">
                       <MapPin className="mr-2 h-4 w-4" />
-                      Main destination: {tripWithItinerary.destination}
+                      Main destination: {trip.destination}
                     </div>
-                    {tripWithItinerary.destination_lat && tripWithItinerary.destination_lng && (
+                    {trip.lat && trip.lon && (
                       <div className="flex items-center">
                         <MapPin className="mr-2 h-4 w-4" />
-                        Coordinates: {tripWithItinerary.destination_lat.toFixed(4)},{" "}
-                        {tripWithItinerary.destination_lng.toFixed(4)}
+                        Coordinates: {trip.lat.toFixed(4)},{" "}
+                        {trip.lon.toFixed(4)}
                       </div>
                     )}
                     <div className="flex items-center">
@@ -346,5 +395,6 @@ export default function TripPage({ params }: TripPageProps) {
         </TabsContent>
       </Tabs>
     </div>
+    </>
   )
 }

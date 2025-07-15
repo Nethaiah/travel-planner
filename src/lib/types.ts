@@ -5,12 +5,14 @@ export interface LocationIQResult {
   licence: string
   lat: string
   lon: string
-  boundingbox: string[]
+  boundingbox?: string[]
   class: string
   type: string
+  importance?: number
+  icon?: string
   display_name: string
-  display_place: string
-  display_address: string
+  display_place?: string
+  display_address?: string
   address: {
     name?: string
     house_number?: string
@@ -19,6 +21,7 @@ export interface LocationIQResult {
     state?: string
     postcode?: string
     country?: string
+    [key: string]: any
   }
 }
 

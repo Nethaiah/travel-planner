@@ -239,7 +239,7 @@ export function TripPage({ trip }: TripPageProps) {
                         <div className="flex items-center justify-between">
                           <div>
                             <CardTitle className="flex items-center font-medium text-slate-900">
-                              <span>{day.title || `Day ${day.day_number}`}</span>
+                              <span>{`Day ${day.day_number}`}</span>
                             </CardTitle>
                             <CardDescription className="mt-1 text-slate-600">
                               {format(new Date(day.date), "EEEE, MMM d")}
@@ -255,9 +255,6 @@ export function TripPage({ trip }: TripPageProps) {
                             Add Activity
                           </Button>
                         </div>
-                        {day.notes && (
-                          <p className="text-sm text-slate-600 mt-2">{day.notes}</p>
-                        )}
                       </CardHeader>
                       {showAddActivity === day.id && (
                         <CardContent className="border-t">

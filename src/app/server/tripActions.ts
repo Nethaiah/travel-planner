@@ -80,12 +80,27 @@ export async function createTrip(data: TripFormData & { userId: string }) {
     throw new Error(Object.values(result.error.flatten().fieldErrors).flat().join("; "));
   }
 
-  const { images, ...tripData } = result.data;
+  const { images, startDate, endDate, ...tripData } = result.data;
+
+  // Calculate itinerary days
+  const itineraryDays = [];
+  let currentDate = new Date(startDate);
+  let dayNumber = 1;
+  while (currentDate <= endDate) {
+    itineraryDays.push({
+      day_number: dayNumber,
+      date: new Date(currentDate),
+    });
+    currentDate.setDate(currentDate.getDate() + 1);
+    dayNumber++;
+  }
 
   try {
     const trip = await prisma.trip.create({
       data: {
         ...tripData,
+        startDate,
+        endDate,
         userId: data.userId,
         coverImage: data.coverImage ?? null,
         lat: data.lat ?? 0,
@@ -106,8 +121,14 @@ export async function createTrip(data: TripFormData & { userId: string }) {
             order: idx,
           })),
         },
+        itinerary_days: {
+          create: itineraryDays,
+        },
       },
-      include: { images: true },
+      include: { 
+        images: true,
+        itinerary_days: true,
+      },
     });
     return trip;
   } catch (error) {

@@ -2,20 +2,8 @@ import { z } from "zod";
 
 // Zod schema for registration form data
 export const registerSchema = z.object({ // this is the schema / validationfor the form data
-  name: z.string()
-    .refine(
-      (val) => {
-        // At least two words, each at least 2 characters, only letters, spaces, hyphens, apostrophes
-        const words = val.trim().split(/\s+/)
-        if (words.length < 2) return false
-        if (!words.every(w => w.length >= 2)) return false
-        // Allow letters, spaces, hyphens, apostrophes
-        return /^[A-Za-z\s\-']+$/.test(val)
-      },
-      {
-        message: "Full name is required"
-      }
-    ),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   terms: z.boolean().refine((v) => v === true, { message: "You must accept the terms" }),

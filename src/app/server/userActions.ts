@@ -11,8 +11,11 @@ import { headers } from "next/headers"
 
 // Register function
 export const register = async ({ name, email, password }: { name: string, email: string, password: string }) => {
+    const nameParts = name.split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
     // Build data object for validation (terms assumed true on server)
-    const data: RegisterFormData = { name, email, password, terms: true }
+    const data: RegisterFormData = { firstName, lastName, email, password, terms: true }
 
     // Validate data using Zod schema
     const result = registerSchema.safeParse(data)
@@ -35,7 +38,7 @@ export const register = async ({ name, email, password }: { name: string, email:
     try {
         await auth.api.signUpEmail({
             body: {
-                name: data.name,
+                name: `${data.firstName} ${data.lastName}`,
                 email: data.email,
                 password: data.password,
             }
@@ -94,7 +97,3 @@ export const getSession = async () => {
         throw err
     }
 }
-
-
-
-

@@ -39,7 +39,8 @@ export function SignUpForm() {
   const { register: data, handleSubmit, setValue, getValues, reset, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       password: "",
       terms: true,
@@ -69,10 +70,10 @@ export function SignUpForm() {
     setShowAlert(false)
     setError(null)
 
-    // Cast to RegisterFormData for validation (terms: true)
     const dataWithTerms = { ...formData, terms: acceptTerms } as RegisterFormData
     try {
-      await register({ name: dataWithTerms.name, email: dataWithTerms.email, password: dataWithTerms.password })
+      const name = `${dataWithTerms.firstName} ${dataWithTerms.lastName}`
+      await register({ name, email: dataWithTerms.email, password: dataWithTerms.password })
       toast.success("Account created! Welcome 🎉", {
         duration: 3000,
         position: "bottom-right",
@@ -141,23 +142,43 @@ export function SignUpForm() {
 
             {/* Email Sign Up Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium text-slate-700">
-                  Full name
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="name"
-                    {...data("name")}
-                    type="text"
-                    placeholder="Enter your full name"
-                    disabled={isLoading}
-                    autoComplete="name"
-                    className="pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
-                  />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="text-sm font-medium text-slate-700">
+                    First name
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="firstName"
+                      {...data("firstName")}
+                      type="text"
+                      placeholder="Enter your first name"
+                      disabled={isLoading}
+                      autoComplete="given-name"
+                      className="pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  {errors.firstName && <p className="text-sm text-red-500">{errors.firstName.message}</p>}
                 </div>
-                {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-sm font-medium text-slate-700">
+                    Last name
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="lastName"
+                      {...data("lastName")}
+                      type="text"
+                      placeholder="Enter your last name"
+                      disabled={isLoading}
+                      autoComplete="family-name"
+                      className="pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  {errors.lastName && <p className="text-sm text-red-500">{errors.lastName.message}</p>}
+                </div>
               </div>
 
               <div className="space-y-2">

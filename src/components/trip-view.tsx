@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddActivityForm } from "@/components/add-activity-form";
 import { Navbar } from "@/components/navbar";
+import { useSession } from "@/lib/auth-client";
 
 interface TripPageProps {
   trip: any;
@@ -21,6 +22,13 @@ export type { TripPageProps };
 export function TripPage({ trip }: TripPageProps) {
   const [showAddActivity, setShowAddActivity] = useState<string | null>(null);
   const router = useRouter();
+  const { data: session, isPending } = useSession()
+  
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push("/login")
+    }
+  }, [isPending, session, router])
 
   if (!trip) {
     return (
@@ -246,8 +254,6 @@ export function TripPage({ trip }: TripPageProps) {
                             </CardDescription>
                           </div>
                           <Button
-                            variant="outline"
-                            size="sm"
                             className="bg-blue-600 hover:bg-blue-700 text-white border-0"
                             onClick={() => setShowAddActivity(showAddActivity === day.id ? null : day.id)}
                           >

@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, MapPin, Clock, DollarSign } from "lucide-react"
+import { useSession } from "@/lib/auth-client"
+import { useRouter } from "next/navigation"
 
 interface AddActivityFormProps {
   dayId: string
@@ -23,6 +25,8 @@ interface AddActivityFormProps {
 export function AddActivityForm({ dayId, onSuccess, onCancel, onSubmitActivity }: AddActivityFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { data: session, isPending } = useSession()
+  const router = useRouter()
 
   // Auto-dismiss error after 3 seconds
   useEffect(() => {
@@ -31,6 +35,12 @@ export function AddActivityForm({ dayId, onSuccess, onCancel, onSubmitActivity }
       return () => clearTimeout(timer)
     }
   }, [error])
+
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push("/login")
+    }
+  }, [isPending, session, router])
 
   const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<ActivityFormData>({
     resolver: zodResolver(activitySchema),
@@ -154,7 +164,7 @@ export function AddActivityForm({ dayId, onSuccess, onCancel, onSubmitActivity }
               Add Activity
             </Button>
             {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+              <Button type="button" variant="outline" className="hover:text-slate-600" onClick={onCancel} disabled={isLoading}>
                 Cancel
               </Button>
             )}

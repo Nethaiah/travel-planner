@@ -122,7 +122,8 @@ model ItineraryDay {
   tripId      String
   day_number  Int
   date        DateTime
-  
+  title       String
+
   trip        Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
   activities  Activity[]
   

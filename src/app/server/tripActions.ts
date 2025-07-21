@@ -71,7 +71,37 @@ export async function getDestinationDetails(placeId: string): Promise<LocationIQ
   }
 }
 
-// Server action to create a trip with images
+// Helper function to calculate itinerary days
+function calculateItineraryDays(startDate: Date, endDate: Date) {
+  const itineraryDays = [];
+  
+  // Ensure we're working with Date objects and normalize to start of day
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  
+  let currentDate = new Date(start);
+  let dayNumber = 1;
+  
+  // Include both start and end dates
+  while (currentDate <= end) {
+    itineraryDays.push({
+      day_number: dayNumber,
+      date: new Date(currentDate),
+      title: `Day ${dayNumber}`,
+    });
+    
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1);
+    dayNumber++;
+  }
+  
+  return itineraryDays;
+}
+
+// Server action to create a trip with itinerary days in a single transaction
 export async function createTrip(data: TripFormData & { userId: string }) {
   // Validate data
   const result = tripSchema.safeParse(data);
@@ -82,58 +112,94 @@ export async function createTrip(data: TripFormData & { userId: string }) {
 
   const { images, startDate, endDate, ...tripData } = result.data;
 
-  // Calculate itinerary days
-  const itineraryDays = [];
-  let currentDate = new Date(startDate);
-  let dayNumber = 1;
-  while (currentDate <= endDate) {
-    itineraryDays.push({
-      day_number: dayNumber,
-      date: new Date(currentDate),
-    });
-    currentDate.setDate(currentDate.getDate() + 1);
-    dayNumber++;
-  }
-
   try {
-    const trip = await prisma.trip.create({
-      data: {
-        ...tripData,
-        startDate,
-        endDate,
-        userId: data.userId,
-        coverImage: data.coverImage ?? null,
-        lat: data.lat ?? 0,
-        lon: data.lon ?? 0,
-        description: tripData.description ?? "No description provided",
-        placeId: data.placeId ?? null,
-        osmId: data.osmId ?? null,
-        osmType: data.osmType ?? null,
-        class: data.class ?? null,
-        type: data.type ?? null,
-        importance: data.importance ?? null,
-        icon: data.icon ?? null,
-        displayName: data.displayName ?? null,
-        addressJson: data.addressJson ?? null,
-        images: {
-          create: (images || []).map((url, idx) => ({
-            url,
-            order: idx,
-          })),
+    // Calculate itinerary days before creating the trip
+    const itineraryDaysData = calculateItineraryDays(startDate, endDate);
+    
+    // Create trip and itinerary days in a single transaction
+    const trip = await prisma.$transaction(async (tx) => {
+      // Create the trip first
+      const createdTrip = await tx.trip.create({
+        data: {
+          ...tripData,
+          startDate,
+          endDate,
+          userId: data.userId,
+          coverImage: data.coverImage ?? null,
+          lat: data.lat ?? 0,
+          lon: data.lon ?? 0,
+          description: tripData.description ?? "No description provided",
+          placeId: data.placeId ?? null,
+          osmId: data.osmId ?? null,
+          osmType: data.osmType ?? null,
+          class: data.class ?? null,
+          type: data.type ?? null,
+          importance: data.importance ?? null,
+          icon: data.icon ?? null,
+          displayName: data.displayName ?? null,
+          addressJson: data.addressJson ?? null,
+          images: {
+            create: (images || []).map((url, idx) => ({
+              url,
+              order: idx,
+            })),
+          },
         },
-        itinerary_days: {
-          create: itineraryDays,
+        include: { 
+          images: true,
         },
-      },
-      include: { 
+      });
+
+      // Create itinerary days
+      await tx.itineraryDay.createMany({
+        data: itineraryDaysData.map(day => ({
+          ...day,
+          tripId: createdTrip.id,
+        })),
+      });
+
+      return createdTrip;
+    });
+    
+    // Fetch the complete trip with itinerary days
+    const tripWithItinerary = await prisma.trip.findUnique({
+      where: { id: trip.id },
+      include: {
         images: true,
-        itinerary_days: true,
+        itinerary_days: {
+          orderBy: {
+            day_number: 'asc'
+          },
+          include: {
+            activities: true
+          }
+        },
       },
     });
-    return trip;
+    
+    return tripWithItinerary;
   } catch (error) {
     console.error("Database error creating trip:", error);
     throw new Error("Failed to create trip. Please try again.");
+  }
+}
+
+// Separate function to create itinerary days (if needed elsewhere)
+export async function createItineraryDays(tripId: string, startDate: Date, endDate: Date) {
+  try {
+    const itineraryDays = calculateItineraryDays(startDate, endDate);
+    
+    const createdDays = await prisma.itineraryDay.createMany({
+      data: itineraryDays.map(day => ({
+        ...day,
+        tripId: tripId,
+      })),
+    });
+    
+    return createdDays;
+  } catch (error) {
+    console.error("Database error creating itinerary days:", error);
+    throw new Error("Failed to create itinerary days. Please try again.");
   }
 }
 
@@ -172,6 +238,7 @@ export async function getTripById(tripId: string) {
     
     return trip;
   } catch (error) {
-      throw new Error("Failed to fetch trip. Please try again.");
+    console.error("Database error fetching trip:", error);
+    throw new Error("Failed to fetch trip. Please try again.");
   }
 }

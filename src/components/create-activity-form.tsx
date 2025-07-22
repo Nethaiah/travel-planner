@@ -14,6 +14,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, MapPin, Clock, DollarSign } from "lucide-react"
 import { useSession } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
+import { createActivity } from "@/app/server/tripActions"
+import { toast } from "sonner"
 
 interface AddActivityFormProps {
   dayId: string
@@ -50,19 +52,26 @@ export function AddActivityForm({ dayId, onSuccess, onCancel, onSubmitActivity }
       location: "",
       startTime: "",
       endTime: "",
-      cost: undefined,
+      cost: 0,
       category: "activity",
     },
   })
 
-  async function onSubmit(data: ActivityFormData) {
+  async function handleSubmitActivity(data: ActivityFormData) {
     setIsLoading(true)
     setError(null)
     try {
+      // Validate with zod (already done by useForm, but double check for type safety)
+      // If a custom onSubmitActivity is provided, use it
       if (onSubmitActivity) {
         await onSubmitActivity(data)
+      } else {
+        // Default: call server action
+        await createActivity({ ...data, dayId })
       }
       reset()
+      toast.success("Activity added successfully! 🎉", { duration: 3000, position: "bottom-right" })
+      router.refresh()
       onSuccess?.()
     } catch (err: any) {
       setError(err?.message || "An error occurred")
@@ -78,10 +87,10 @@ export function AddActivityForm({ dayId, onSuccess, onCancel, onSubmitActivity }
         <CardDescription>Add an activity to your itinerary</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleSubmitActivity)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Activity Title *</Label>
-            <Input id="title" {...register("title")} placeholder="e.g., Visit Senso-ji Temple" required disabled={isLoading} />
+            <Input id="title" {...register("title")} placeholder="e.g., Visit Senso-ji Temple" disabled={isLoading} />
             {errors.title && <p className="text-sm text-red-600">{errors.title.message}</p>}
           </div>
 

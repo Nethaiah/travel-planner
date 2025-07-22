@@ -4,6 +4,7 @@ import { LOCATION_IQ_API_KEY } from "@/lib/env"
 import { AutocompleteParams, LocationIQResult } from "@/lib/types"
 import prisma from "@/lib/prisma"
 import { tripSchema, type TripFormData } from "@/lib/validations"
+import { activitySchema, type ActivityFormData } from "@/lib/validations"
 
 export async function searchDestinations(params: AutocompleteParams): Promise<LocationIQResult[]> {
   try {
@@ -128,7 +129,7 @@ export async function createTrip(data: TripFormData & { userId: string }) {
           coverImage: data.coverImage ?? null,
           lat: data.lat ?? 0,
           lon: data.lon ?? 0,
-          description: tripData.description ?? "No description provided",
+          description: tripData.description?.trim() ? tripData.description : "No description provided",
           placeId: data.placeId ?? null,
           osmId: data.osmId ?? null,
           osmType: data.osmType ?? null,
@@ -242,3 +243,59 @@ export async function getTripById(tripId: string) {
     throw new Error("Failed to fetch trip. Please try again.");
   }
 }
+
+// Server action to create an activity for an itinerary day
+export async function createActivity(data: ActivityFormData & { dayId: string }) {
+  // Validate data
+  const result = activitySchema.safeParse(data)
+  if (!result.success) {
+    console.error("Server validation failed:", result.error.flatten().fieldErrors)
+    throw new Error(Object.values(result.error.flatten().fieldErrors).flat().join("; "))
+  }
+
+  try {
+    const activity = await prisma.activity.create({
+      data: {
+        dayId: data.dayId,
+        title: data.title,
+        description: data.description?.trim() ? data.description : "No description provided",
+        location: data.location?.trim() ? data.location : "No location provided",
+        startTime: data.startTime?.trim() ? data.startTime : "No start time provided",
+        endTime: data.endTime?.trim() ? data.endTime : "No end time provided",
+        cost: data.cost ?? 0,
+        category: data.category ?? "activity",
+      },
+    })
+    return activity
+  } catch (error) {
+    console.error("Database error creating activity:", error)
+    throw new Error("Failed to create activity. Please try again.")
+  }
+}
+
+// Server action to delete an activity by its id
+export async function deleteActivity(activityId: string) {
+  try {
+    await prisma.activity.delete({
+      where: { id: activityId },
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Database error deleting activity:", error);
+    throw new Error("Failed to delete activity. Please try again.");
+  }
+}
+
+// Server action to delete a trip by its id
+export async function deleteTrip(tripId: string) {
+  try {
+    await prisma.trip.delete({
+      where: { id: tripId },
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Database error deleting trip:", error);
+    throw new Error("Failed to delete trip. Please try again.");
+  }
+}
+

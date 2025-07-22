@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, MapPin, Calendar, CheckCircle, Clock } from "lucide-react"
 import { useSession } from "@/lib/auth-client"
 import Link from "next/link"
-import { getTripsByUser } from "@/app/server/tripActions"
 import { useState } from "react"
 import { Navbar } from "@/components/navbar"
 

@@ -62,6 +62,6 @@ export const activitySchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   cost: z.number().min(0, "Cost must be 0 or greater").optional(),
-  category: z.enum(["activity", "accommodation", "food", "transport", "other"]),
+  category: z.enum(["activity", "accommodation", "food", "transport", "other"]).optional(),
 });
 export type ActivityFormData = z.infer<typeof activitySchema>;

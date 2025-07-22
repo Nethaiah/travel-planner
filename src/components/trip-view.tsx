@@ -9,9 +9,36 @@ import { Calendar, MapPin, DollarSign, Edit, Plus, Clock, Trash2 } from "lucide-
 import Link from "next/link";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AddActivityForm } from "@/components/add-activity-form";
+import { AddActivityForm } from "@/components/create-activity-form";
 import { Navbar } from "@/components/navbar";
 import { useSession } from "@/lib/auth-client";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {CSS} from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 
 interface TripPageProps {
   trip: any;
@@ -66,12 +93,140 @@ export function TripPage({ trip }: TripPageProps) {
     }
   };
 
-  const handleDeleteActivity = async (activityId: string) => {
-    if (confirm("Are you sure you want to delete this activity?")) {
-      // TODO: Implement activity deletion
-      console.log("Delete activity:", activityId);
+  const [deleteDialog, setDeleteDialog] = useState<{ activityId: string; dayId: string } | null>(null);
+
+  const handleDeleteActivity = async (activityId: string, dayId: string) => {
+    try {
+      const res = await fetch(`/api/activities/${activityId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete activity");
+      toast.success("Activity deleted");
+      setDeleteDialog(null);
+      router.refresh();
+    } catch (err) {
+      toast.error("Failed to delete activity");
+      console.error(err);
     }
   };
+
+  const handleDeleteTrip = async (tripId: string) => {
+    try { 
+      const res = await fetch(`/api/trips/${tripId}`, { 
+        method: 'DELETE' 
+      });
+      if (!res.ok) throw new Error("Failed to delete trip");
+      toast.success("Trip deleted");
+      setDeleteDialog(null);
+      router.push('/dashboard');
+    } catch (err) {
+      toast.error("Failed to delete trip");
+      console.error(err);
+    }
+  };
+
+  const [activitiesByDay, setActivitiesByDay] = useState(() => {
+    // Map day.id to a copy of its activities array
+    const map: Record<string, any[]> = {};
+    trip.itinerary_days?.forEach((day: any) => {
+      map[day.id] = day.activities ? [...day.activities] : [];
+    });
+    return map;
+  });
+
+  useEffect(() => {
+    // Sync activitiesByDay if trip prop changes
+    const map: Record<string, any[]> = {};
+    trip.itinerary_days?.forEach((day: any) => {
+      map[day.id] = day.activities ? [...day.activities] : [];
+    });
+    setActivitiesByDay(map);
+  }, [trip]);
+
+  // Sortable Activity Item
+  function SortableActivity({ activity, dayId }: { activity: any; dayId: string }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: activity.id,
+    });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      background: isDragging ? '#f1f5f9' : undefined,
+      cursor: 'grab',
+    };
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        className="flex items-start justify-between p-4 bg-slate-50 rounded-lg border border-transparent hover:border-blue-300 group"
+      >
+        <div className="flex items-center mr-2">
+          <button
+            {...listeners}
+            className="mr-3 text-slate-400 hover:text-blue-600 focus:outline-none cursor-grab"
+            tabIndex={-1}
+            aria-label="Drag to reorder"
+            type="button"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1">
+          <div className="flex items-start justify-between">
+            <h4 className="font-medium text-slate-900">
+              {activity.title}
+            </h4>
+            <div className="flex items-center space-x-2">
+              <Badge variant="secondary" className="text-xs">
+                {activity.category}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDeleteDialog({ activityId: activity.id, dayId: dayId })}
+                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+          {activity.description && (
+            <p className="text-sm text-slate-600 mt-1">
+              {activity.description}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-slate-500">
+            {activity.location && (
+              <span className="flex items-center">
+                <MapPin className="mr-1 h-3 w-3" />
+                {activity.location}
+              </span>
+            )}
+            {activity.startTime && (
+              <span className="flex items-center">
+                <Clock className="mr-1 h-3 w-3" />
+                {activity.startTime}
+                {activity.endTime && ` - ${activity.endTime}`}
+              </span>
+            )}
+            {activity.cost && activity.cost > 0 ? (
+              <span className="flex items-center">
+                <DollarSign className="mr-1 h-3 w-3" />
+                ${activity.cost}
+              </span>
+            ) : (
+              <span className="flex items-center">
+                <DollarSign className="mr-1 h-3 w-3" />
+                No cost provided
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -103,6 +258,36 @@ export function TripPage({ trip }: TripPageProps) {
                   Edit Trip
                 </Link>
               </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button className="mt-4 sm:mt-0 bg-red-600 hover:bg-red-700 text-white">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Delete Trip
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-white border border-slate-200 shadow-lg rounded-lg p-6 text-slate-900">
+                  <AlertDialogHeader className="text-left">
+                    <AlertDialogTitle className="text-lg font-semibold text-slate-900">Delete Trip</AlertDialogTitle>
+                    <AlertDialogDescription className="text-slate-600 text-sm">
+                      Are you sure you want to delete this trip? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex flex-row justify-end gap-2 mt-4">
+                    <AlertDialogCancel className="bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-700 border border-slate-200 rounded-md px-4 py-2 font-medium">
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-red-600 text-white hover:bg-red-700 rounded-md px-4 py-2 font-medium"
+                      onClick={async () => {
+                        await handleDeleteTrip(trip.id);
+                      }}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
             {trip.description && (
               <p className="text-slate-600 mb-4">{trip.description}</p>
@@ -275,67 +460,31 @@ export function TripPage({ trip }: TripPageProps) {
                       )}
                       {day.activities && day.activities.length > 0 && (
                         <CardContent className={showAddActivity === day.id ? "border-t" : ""}>
-                          <div className="space-y-3">
-                            {day.activities.map((activity: any) => (
-                              <div
-                                key={activity.id}
-                                className="flex items-start justify-between p-4 bg-slate-50 rounded-lg"
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-start justify-between">
-                                    <h4 className="font-medium text-slate-900">
-                                      {activity.title}
-                                    </h4>
-                                    <div className="flex items-center space-x-2">
-                                      <Badge variant="secondary" className="text-xs">
-                                        {activity.category}
-                                      </Badge>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDeleteActivity(activity.id)}
-                                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  {activity.description && (
-                                    <p className="text-sm text-slate-600 mt-1">
-                                      {activity.description}
-                                    </p>
-                                  )}
-                                  <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-slate-500">
-                                    {activity.location && (
-                                      <span className="flex items-center">
-                                        <MapPin className="mr-1 h-3 w-3" />
-                                        {activity.location}
-                                      </span>
-                                    )}
-                                    {activity.latitude && activity.longitude && (
-                                      <span className="flex items-center">
-                                        <MapPin className="mr-1 h-3 w-3" />
-                                        {activity.latitude.toFixed(4)}, {activity.longitude.toFixed(4)}
-                                      </span>
-                                    )}
-                                    {activity.start_time && (
-                                      <span className="flex items-center">
-                                        <Clock className="mr-1 h-3 w-3" />
-                                        {activity.start_time}
-                                        {activity.end_time && ` - ${activity.end_time}`}
-                                      </span>
-                                    )}
-                                    {activity.cost && (
-                                      <span className="flex items-center">
-                                        <DollarSign className="mr-1 h-3 w-3" />
-                                        ${activity.cost}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
+                          <DndContext
+                            sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))}
+                            collisionDetection={closestCenter}
+                            onDragEnd={({ active, over }) => {
+                              if (active.id !== over?.id) {
+                                setActivitiesByDay((prev) => {
+                                  const oldIndex = prev[day.id].findIndex((a) => a.id === active.id);
+                                  const newIndex = prev[day.id].findIndex((a) => a.id === over?.id);
+                                  const newArr = arrayMove(prev[day.id], oldIndex, newIndex);
+                                  return { ...prev, [day.id]: newArr };
+                                });
+                              }
+                            }}
+                          >
+                            <SortableContext
+                              items={activitiesByDay[day.id].map((a) => a.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className="space-y-3">
+                                {activitiesByDay[day.id].map((activity: any) => (
+                                  <SortableActivity key={activity.id} activity={activity} dayId={day.id} />
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            </SortableContext>
+                          </DndContext>
                         </CardContent>
                       )}
                       {(!day.activities || day.activities.length === 0) && showAddActivity !== day.id && (
@@ -401,6 +550,31 @@ export function TripPage({ trip }: TripPageProps) {
           </Tabs>
         </div>
       </div>
+      {/* Global AlertDialog for deleting activity */}
+      {deleteDialog && (
+        <AlertDialog open={!!deleteDialog} onOpenChange={open => { if (!open) setDeleteDialog(null); }}>
+          <AlertDialogContent className="bg-white border border-slate-200 shadow-lg rounded-lg p-6 text-slate-900">
+            <AlertDialogHeader className="text-left">
+              <AlertDialogTitle className="text-lg font-semibold text-slate-900">Delete Activity</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-600 text-sm">
+                Are you sure you want to delete this activity? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex flex-row justify-end gap-2 mt-4">
+              <AlertDialogCancel className="bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-700 border border-slate-200 rounded-md px-4 py-2 font-medium">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (deleteDialog) await handleDeleteActivity(deleteDialog.activityId, deleteDialog.dayId);
+                }}
+                className="bg-blue-600 text-white hover:bg-blue-700 rounded-md px-4 py-2 font-medium">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }

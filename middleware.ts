@@ -16,5 +16,5 @@ export async function middleware(request: NextRequest) {
  
 export const config = {
   runtime: "nodejs",
-  matcher: ["/dashboard", "/dashboard/:path*", "/trip/new", "/trip/new/:path*", "/trip/:path*"],
+  matcher: ["/dashboard", "/dashboard/:path*", "/trip/new", "/trip/new/:path*", "/trip/:path*", "/api/:path*"],
 };

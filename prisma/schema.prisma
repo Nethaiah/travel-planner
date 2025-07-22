@@ -76,31 +76,31 @@ model Verification {
 }
 
 model Trip {
-  id          String       @id @default(cuid())
-  title       String
-  description String?
-  destination String
-  startDate   DateTime
-  endDate     DateTime
-  budget      Float?
-  coverImage  String?
-  images      Trip_Image[]
+  id             String         @id @default(cuid())
+  title          String
+  description    String?
+  destination    String
+  startDate      DateTime
+  endDate        DateTime
+  budget         Float?
+  coverImage     String?
+  images         Trip_Image[]
   itinerary_days ItineraryDay[]
-  userId      String
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lat         Float? // Latitude
-  lon         Float? // Longitude
-  placeId     String? // LocationIQ place_id
-  osmId       String? // OSM id
-  osmType     String? // OSM type
-  class       String? // LocationIQ class
-  type        String? // LocationIQ type
-  importance  Float? // LocationIQ importance
-  icon        String? // LocationIQ icon URL
-  displayName String? // LocationIQ display_name
-  addressJson Json? // Full address object (optional)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lat            Float? // Latitude
+  lon            Float? // Longitude
+  placeId        String? // LocationIQ place_id
+  osmId          String? // OSM id
+  osmType        String? // OSM type
+  class          String? // LocationIQ class
+  type           String? // LocationIQ type
+  importance     Float? // LocationIQ importance
+  icon           String? // LocationIQ icon URL
+  displayName    String? // LocationIQ display_name
+  addressJson    Json? // Full address object (optional)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@map("trip")
 }
@@ -118,32 +118,38 @@ model Trip_Image {
 }
 
 model ItineraryDay {
-  id          String @id @default(cuid())
-  tripId      String
-  day_number  Int
-  date        DateTime
-  title       String
+  id         String   @id @default(cuid())
+  tripId     String
+  day_number Int
+  date       DateTime
+  title      String
 
-  trip        Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  activities  Activity[]
-  
+  trip       Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  activities Activity[]
+
   @@map("itinerary_day")
 }
 
+enum ActivityCategory {
+  activity
+  accommodation
+  food
+  transport
+  other
+}
+
 model Activity {
-  id          String @id @default(cuid())
+  id          String           @id @default(cuid())
   dayId       String
   title       String
   description String?
-  category    String
+  category    ActivityCategory
   location    String?
-  latitude    Float?
-  longitude   Float?
-  start_time  String?
-  end_time    String?
+  startTime   String?
+  endTime     String?
   cost        Float?
-  
-  day         ItineraryDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  
+
+  day ItineraryDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
   @@map("activity")
 }

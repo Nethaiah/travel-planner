@@ -19,7 +19,7 @@ import { toast } from "sonner"
 
 interface AddActivityFormProps {
   dayId: string
-  onSuccess?: () => void
+  onSuccess?: (activity?: any) => void
   onCancel?: () => void
 }
 
@@ -65,7 +65,7 @@ export function AddActivityForm({ dayId, onSuccess, onCancel }: AddActivityFormP
         duration: 3000,
         position: "bottom-right"
       })
-      onSuccess?.()
+      onSuccess?.(activity)
     } catch (err: any) {
       setError(err?.message || "Failed to add activity. Please try again.")
     } finally {

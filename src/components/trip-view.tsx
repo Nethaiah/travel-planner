@@ -46,7 +46,8 @@ interface TripPageProps {
 
 export type { TripPageProps };
 
-export function TripPage({ trip }: TripPageProps) {
+export function TripPage({ trip: initialTrip }: TripPageProps) {
+  const [trip, setTrip] = useState(initialTrip);
   const [showAddActivity, setShowAddActivity] = useState<string | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ activityId: string; dayId: string } | null>(null);
   const router = useRouter();
@@ -57,6 +58,35 @@ export function TripPage({ trip }: TripPageProps) {
       router.push("/login")
     }
   }, [isPending, session, router])
+
+  // Update local trip state when prop changes
+  useEffect(() => {
+    setTrip(initialTrip);
+  }, [initialTrip]);
+
+  // Function to add a new activity to the local state
+  const handleActivityAdded = (newActivity: any, dayId: string) => {
+    setTrip((prevTrip: any) => ({
+      ...prevTrip,
+      itinerary_days: prevTrip.itinerary_days?.map((day: any) => 
+        day.id === dayId 
+          ? { ...day, activities: [...(day.activities || []), newActivity] }
+          : day
+      ) || []
+    }));
+  };
+
+  // Function to remove an activity from the local state
+  const handleActivityDeleted = (activityId: string, dayId: string) => {
+    setTrip((prevTrip: any) => ({
+      ...prevTrip,
+      itinerary_days: prevTrip.itinerary_days?.map((day: any) => 
+        day.id === dayId 
+          ? { ...day, activities: day.activities?.filter((activity: any) => activity.id !== activityId) || [] }
+          : day
+      ) || []
+    }));
+  };
 
   if (!trip) {
     return (
@@ -101,6 +131,7 @@ export function TripPage({ trip }: TripPageProps) {
       });
       if (!res.ok) throw new Error("Failed to delete activity");
       toast.success("Activity deleted");
+      handleActivityDeleted(activityId, dayId);
       setDeleteDialog(null);
     } catch (err) {
       toast.error("Failed to delete activity");
@@ -450,7 +481,10 @@ export function TripPage({ trip }: TripPageProps) {
                           <div className="pt-4">
                             <AddActivityForm
                               dayId={day.id}
-                              onSuccess={() => setShowAddActivity(null)}
+                              onSuccess={(newActivity) => {
+                                handleActivityAdded(newActivity, day.id);
+                                setShowAddActivity(null);
+                              }}
                               onCancel={() => setShowAddActivity(null)}
                             />
                           </div>

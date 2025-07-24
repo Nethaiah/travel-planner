@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +37,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import {CSS} from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { SortableActivity } from "./sortable-activity";
 
 interface TripPageProps {
   trip: any;
@@ -46,17 +45,96 @@ interface TripPageProps {
 
 export type { TripPageProps };
 
-export function TripPage({ trip }: TripPageProps) {
+export function TripPage({ trip: initialTrip }: TripPageProps) {
+  const [trip, setTrip] = useState(initialTrip);
   const [showAddActivity, setShowAddActivity] = useState<string | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ activityId: string; dayId: string } | null>(null);
   const router = useRouter();
   const { data: session, isPending } = useSession()
+
+  // DnD sensors
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // Derive activitiesByDay from trip state - single source of truth
+  const activitiesByDay = useMemo(() => {
+    if (!trip?.itinerary_days) return {};
+    const map: Record<string, any[]> = {};
+    trip.itinerary_days.forEach((day: any) => {
+      map[day.id] = day.activities ? [...day.activities] : [];
+    });
+    return map;
+  }, [trip]);
   
   useEffect(() => {
     if (!isPending && !session?.user) {
       router.push("/login")
     }
   }, [isPending, session, router])
+
+  // Update local trip state when prop changes
+  useEffect(() => {
+    setTrip(initialTrip);
+  }, [initialTrip]);
+
+  // Function to add a new activity to the local state
+  const handleActivityAdded = (newActivity: any, dayId: string) => {
+    setTrip((prevTrip: any) => {
+      if (!prevTrip) return prevTrip;
+      return {
+        ...prevTrip,
+        itinerary_days: prevTrip.itinerary_days?.map((day: any) => 
+          day.id === dayId 
+            ? { ...day, activities: [...(day.activities || []), newActivity] }
+            : day
+        ) || []
+      };
+    });
+  };
+
+  // Function to remove an activity from the local state
+  const handleActivityDeleted = (activityId: string, dayId: string) => {
+    setTrip((prevTrip: any) => {
+      if (!prevTrip) return prevTrip;
+      return {
+        ...prevTrip,
+        itinerary_days: prevTrip.itinerary_days?.map((day: any) => 
+          day.id === dayId 
+            ? { ...day, activities: day.activities?.filter((activity: any) => activity.id !== activityId) || [] }
+            : day
+        ) || []
+      };
+    });
+  };
+
+  // Function to update activity order after drag and drop
+  const handleActivityReorder = (dayId: string, newActivities: any[]) => {
+    setTrip((prevTrip: any) => {
+      if (!prevTrip) return prevTrip;
+      return {
+        ...prevTrip,
+        itinerary_days: prevTrip.itinerary_days?.map((day: any) => 
+          day.id === dayId 
+            ? { ...day, activities: newActivities }
+            : day
+        ) || []
+      };
+    });
+  };
+
+  const handleDeleteActivity = async (activityId: string, dayId: string) => {
+    try {
+      const res = await fetch(`/api/activities/${activityId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete activity");
+      toast.success("Activity deleted");
+      handleActivityDeleted(activityId, dayId);
+      setDeleteDialog(null);
+    } catch (err) {
+      toast.error("Failed to delete activity");
+      console.error(err);
+    }
+  };
 
   if (!trip) {
     return (
@@ -94,138 +172,6 @@ export function TripPage({ trip }: TripPageProps) {
     }
   };
 
-  const handleDeleteActivity = async (activityId: string, dayId: string) => {
-    try {
-      const res = await fetch(`/api/activities/${activityId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete activity");
-      toast.success("Activity deleted");
-      setDeleteDialog(null);
-    } catch (err) {
-      toast.error("Failed to delete activity");
-      console.error(err);
-    }
-  };
-
-  const handleDeleteTrip = async (tripId: string) => {
-    try { 
-      const res = await fetch(`/api/trips/${tripId}`, { 
-        method: 'DELETE' 
-      });
-      if (!res.ok) throw new Error("Failed to delete trip");
-      toast.success("Trip deleted");
-      setDeleteDialog(null);
-      router.push('/dashboard');
-    } catch (err) {
-      toast.error("Failed to delete trip");
-      console.error(err);
-    }
-  };
-
-  const [activitiesByDay, setActivitiesByDay] = useState(() => {
-    // Map day.id to a copy of its activities array
-    const map: Record<string, any[]> = {};
-    trip.itinerary_days?.forEach((day: any) => {
-      map[day.id] = day.activities ? [...day.activities] : [];
-    });
-    return map;
-  });
-
-  useEffect(() => {
-    // Sync activitiesByDay if trip prop changes
-    const map: Record<string, any[]> = {};
-    trip.itinerary_days?.forEach((day: any) => {
-      map[day.id] = day.activities ? [...day.activities] : [];
-    });
-    setActivitiesByDay(map);
-  }, [trip]);
-
-  // Sortable Activity Item
-  function SortableActivity({ activity, dayId }: { activity: any; dayId: string }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-      id: activity.id,
-    });
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-      background: isDragging ? '#f1f5f9' : undefined,
-      cursor: 'grab',
-    };
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        className="flex items-start justify-between p-4 bg-slate-50 rounded-lg border border-transparent hover:border-blue-300 group"
-      >
-        <div className="flex items-center mr-2">
-          <button
-            {...listeners}
-            className="mr-3 text-slate-400 hover:text-blue-600 focus:outline-none cursor-grab"
-            tabIndex={-1}
-            aria-label="Drag to reorder"
-            type="button"
-          >
-            <GripVertical className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="flex-1">
-          <div className="flex items-start justify-between">
-            <h4 className="font-medium text-slate-900">
-              {activity.title}
-            </h4>
-            <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="text-xs">
-                {activity.category}
-              </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setDeleteDialog({ activityId: activity.id, dayId: dayId })}
-                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-          {activity.description && (
-            <p className="text-sm text-slate-600 mt-1">
-              {activity.description}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-slate-500">
-            {activity.location && (
-              <span className="flex items-center">
-                <MapPin className="mr-1 h-3 w-3" />
-                {activity.location}
-              </span>
-            )}
-            {activity.startTime && (
-              <span className="flex items-center">
-                <Clock className="mr-1 h-3 w-3" />
-                {activity.startTime}
-                {activity.endTime && ` - ${activity.endTime}`}
-              </span>
-            )}
-            {activity.cost && activity.cost > 0 ? (
-              <span className="flex items-center">
-                <DollarSign className="mr-1 h-3 w-3" />
-                ${activity.cost}
-              </span>
-            ) : (
-              <span className="flex items-center">
-                <DollarSign className="mr-1 h-3 w-3" />
-                No cost provided
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
       <Navbar />
@@ -250,42 +196,6 @@ export function TripPage({ trip }: TripPageProps) {
                   </Badge>
                 </div>
               </div>
-              <Button asChild className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white">
-                <Link href={`/trips/${trip.id}/edit`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Trip
-                </Link>
-              </Button>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button className="mt-4 sm:mt-0 bg-red-600 hover:bg-red-700 text-white">
-                    <Edit className="mr-2 h-4 w-4" />
-                    Delete Trip
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="bg-white border border-slate-200 shadow-lg rounded-lg p-6 text-slate-900">
-                  <AlertDialogHeader className="text-left">
-                    <AlertDialogTitle className="text-lg font-semibold text-slate-900">Delete Trip</AlertDialogTitle>
-                    <AlertDialogDescription className="text-slate-600 text-sm">
-                      Are you sure you want to delete this trip? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter className="flex flex-row justify-end gap-2 mt-4">
-                    <AlertDialogCancel className="bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-700 border border-slate-200 rounded-md px-4 py-2 font-medium">
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-red-600 text-white hover:bg-red-700 rounded-md px-4 py-2 font-medium"
-                      onClick={async () => {
-                        await handleDeleteTrip(trip.id);
-                      }}
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
             {trip.description && (
               <p className="text-slate-600 mb-4">{trip.description}</p>
@@ -450,25 +360,26 @@ export function TripPage({ trip }: TripPageProps) {
                           <div className="pt-4">
                             <AddActivityForm
                               dayId={day.id}
-                              onSuccess={() => setShowAddActivity(null)}
+                              onSuccess={(newActivity) => {
+                                handleActivityAdded(newActivity, day.id);
+                                setShowAddActivity(null);
+                              }}
                               onCancel={() => setShowAddActivity(null)}
                             />
                           </div>
                         </CardContent>
                       )}
-                      {day.activities && day.activities.length > 0 && (
+                      {activitiesByDay[day.id] && activitiesByDay[day.id].length > 0 && (
                         <CardContent className={showAddActivity === day.id ? "border-t" : ""}>
                           <DndContext
-                            sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))}
+                            sensors={sensors}
                             collisionDetection={closestCenter}
                             onDragEnd={({ active, over }) => {
                               if (active.id !== over?.id) {
-                                setActivitiesByDay((prev) => {
-                                  const oldIndex = prev[day.id].findIndex((a) => a.id === active.id);
-                                  const newIndex = prev[day.id].findIndex((a) => a.id === over?.id);
-                                  const newArr = arrayMove(prev[day.id], oldIndex, newIndex);
-                                  return { ...prev, [day.id]: newArr };
-                                });
+                                const oldIndex = activitiesByDay[day.id].findIndex((a) => a.id === active.id);
+                                const newIndex = activitiesByDay[day.id].findIndex((a) => a.id === over?.id);
+                                const newActivities = arrayMove(activitiesByDay[day.id], oldIndex, newIndex);
+                                handleActivityReorder(day.id, newActivities);
                               }
                             }}
                           >
@@ -478,14 +389,19 @@ export function TripPage({ trip }: TripPageProps) {
                             >
                               <div className="space-y-3">
                                 {activitiesByDay[day.id].map((activity: any) => (
-                                  <SortableActivity key={activity.id} activity={activity} dayId={day.id} />
+                                  <SortableActivity 
+                                    key={activity.id} 
+                                    activity={activity} 
+                                    dayId={day.id} 
+                                    setDeleteDialog={setDeleteDialog} 
+                                  />
                                 ))}
                               </div>
                             </SortableContext>
                           </DndContext>
                         </CardContent>
                       )}
-                      {(!day.activities || day.activities.length === 0) && showAddActivity !== day.id && (
+                      {(!activitiesByDay[day.id] || activitiesByDay[day.id].length === 0) && showAddActivity !== day.id && (
                         <CardContent>
                           <div className="text-center py-8 text-slate-500">
                             <Calendar className="mx-auto h-8 w-8 mb-2" />

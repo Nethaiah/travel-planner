@@ -53,6 +53,9 @@ export function SignInForm() {
     setError(null)
     try {
       await login({ email: data.email, password: data.password })
+
+      reset() 
+      
       toast.success("Login successful! Welcome back 👋", {
         duration: 3000,
         position: "bottom-right",

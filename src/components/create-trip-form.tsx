@@ -266,8 +266,9 @@ export function CreateTripForm() {
         throw new Error("You must be logged in to create a trip.");
       }
 
-      console.log("Submitting form data:", formData);
       await createTrip({ ...formData, userId: session.user.id });
+
+      reset()
 
       toast.success("Trip created successfully! 🎉", {
         duration: 3000,

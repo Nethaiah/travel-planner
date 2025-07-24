@@ -19,7 +19,7 @@ import { toast } from "sonner"
 
 interface AddActivityFormProps {
   dayId: string
-  onSuccess?: () => void
+  onSuccess?: (activity?: any) => void
   onCancel?: () => void
 }
 
@@ -43,7 +43,7 @@ export function AddActivityForm({ dayId, onSuccess, onCancel }: AddActivityFormP
     }
   }, [isPending, session, router])
 
-  const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<ActivityFormData>({
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<ActivityFormData>({
     resolver: zodResolver(activitySchema),
     defaultValues: {
       title: "",
@@ -56,16 +56,25 @@ export function AddActivityForm({ dayId, onSuccess, onCancel }: AddActivityFormP
     },
   })
 
+  // Watch the category value to ensure the select shows the current value
+  const selectedCategory = watch("category")
+
   async function handleSubmitActivity(data: ActivityFormData) {
     setIsLoading(true)
     setError(null)
     try {
       const activity = await createActivity({ ...data, dayId })
+      
+      // Reset the form after successful submission
+      reset()
+      
       toast.success("Activity added successfully! 🎉", {
         duration: 3000,
         position: "bottom-right"
       })
-      onSuccess?.()
+      
+      // Call onSuccess with the new activity for immediate UI update
+      onSuccess?.(activity)
     } catch (err: any) {
       setError(err?.message || "Failed to add activity. Please try again.")
     } finally {
@@ -83,7 +92,12 @@ export function AddActivityForm({ dayId, onSuccess, onCancel }: AddActivityFormP
         <form onSubmit={handleSubmit(handleSubmitActivity)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Activity Title *</Label>
-            <Input id="title" {...register("title")} placeholder="e.g., Visit Senso-ji Temple" disabled={isLoading} />
+            <Input 
+              id="title" 
+              {...register("title")} 
+              placeholder="e.g., Visit Senso-ji Temple" 
+              disabled={isLoading} 
+            />
             {errors.title && <p className="text-sm text-red-600">{errors.title.message}</p>}
           </div>
 
@@ -104,13 +118,22 @@ export function AddActivityForm({ dayId, onSuccess, onCancel }: AddActivityFormP
               <MapPin className="mr-2 h-4 w-4" />
               Location
             </Label>
-            <Input id="location" {...register("location")} placeholder="e.g., Asakusa, Tokyo" disabled={isLoading} />
+            <Input 
+              id="location" 
+              {...register("location")} 
+              placeholder="e.g., Asakusa, Tokyo" 
+              disabled={isLoading} 
+            />
             {errors.location && <p className="text-sm text-red-600">{errors.location.message}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
-            <Select value={undefined} onValueChange={val => setValue("category", val as ActivityFormData["category"]) } defaultValue="activity" disabled={isLoading}>
+            <Select 
+              value={selectedCategory} 
+              onValueChange={val => setValue("category", val as ActivityFormData["category"])} 
+              disabled={isLoading}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
@@ -131,7 +154,12 @@ export function AddActivityForm({ dayId, onSuccess, onCancel }: AddActivityFormP
                 <Clock className="mr-2 h-4 w-4" />
                 Start Time
               </Label>
-              <Input id="startTime" type="time" {...register("startTime")} disabled={isLoading} />
+              <Input 
+                id="startTime" 
+                type="time" 
+                {...register("startTime")} 
+                disabled={isLoading} 
+              />
               {errors.startTime && <p className="text-sm text-red-600">{errors.startTime.message}</p>}
             </div>
 
@@ -140,7 +168,12 @@ export function AddActivityForm({ dayId, onSuccess, onCancel }: AddActivityFormP
                 <Clock className="mr-2 h-4 w-4" />
                 End Time
               </Label>
-              <Input id="endTime" type="time" {...register("endTime")} disabled={isLoading} />
+              <Input 
+                id="endTime" 
+                type="time" 
+                {...register("endTime")} 
+                disabled={isLoading} 
+              />
               {errors.endTime && <p className="text-sm text-red-600">{errors.endTime.message}</p>}
             </div>
           </div>
@@ -150,7 +183,15 @@ export function AddActivityForm({ dayId, onSuccess, onCancel }: AddActivityFormP
               <DollarSign className="mr-2 h-4 w-4" />
               Cost (Optional)
             </Label>
-            <Input id="cost" type="number" step="0.01" min="0" {...register("cost", { valueAsNumber: true })} placeholder="0" disabled={isLoading} />
+            <Input 
+              id="cost" 
+              type="number" 
+              step="0.01" 
+              min="0" 
+              {...register("cost", { valueAsNumber: true })} 
+              placeholder="0" 
+              disabled={isLoading} 
+            />
             {errors.cost && <p className="text-sm text-red-600">{errors.cost.message}</p>}
           </div>
 

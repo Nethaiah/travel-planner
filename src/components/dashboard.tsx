@@ -45,6 +45,11 @@ export function DashboardPage() {
     fetchTrips()
   }, [session?.user?.id])
 
+  // Function to handle trip deletion
+  const handleTripDeleted = (deletedTripId: string) => {
+    setTrips(prevTrips => prevTrips.filter(trip => trip.id !== deletedTripId))
+  }
+
   // Compute status dynamically
   const tripsWithStatus = trips.map((trip) => {
     const now = new Date()
@@ -151,7 +156,7 @@ export function DashboardPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {tripsWithStatus.map((trip) => (
-                <TripCard key={trip.id} trip={trip} />
+                <TripCard key={trip.id} trip={trip} onTripDeleted={handleTripDeleted} />
               ))}
             </div>
           )}

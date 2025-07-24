@@ -74,6 +74,9 @@ export function SignUpForm() {
     try {
       const name = `${dataWithTerms.firstName} ${dataWithTerms.lastName}`
       await register({ name, email: dataWithTerms.email, password: dataWithTerms.password })
+
+      reset()
+
       toast.success("Account created! Welcome 🎉", {
         duration: 3000,
         position: "bottom-right",

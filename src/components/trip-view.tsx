@@ -53,6 +53,16 @@ export function TripPage({ trip: initialTrip }: TripPageProps) {
   const router = useRouter();
   const { data: session, isPending } = useSession()
   
+  // Initialize activitiesByDay state - always call this hook
+  const [activitiesByDay, setActivitiesByDay] = useState<Record<string, any[]>>(() => {
+    if (!initialTrip?.itinerary_days) return {};
+    const map: Record<string, any[]> = {};
+    initialTrip.itinerary_days.forEach((day: any) => {
+      map[day.id] = day.activities ? [...day.activities] : [];
+    });
+    return map;
+  });
+  
   useEffect(() => {
     if (!isPending && !session?.user) {
       router.push("/login")
@@ -64,30 +74,80 @@ export function TripPage({ trip: initialTrip }: TripPageProps) {
     setTrip(initialTrip);
   }, [initialTrip]);
 
+  // Sync activitiesByDay when trip changes
+  useEffect(() => {
+    if (!trip?.itinerary_days) {
+      setActivitiesByDay({});
+      return;
+    }
+    const map: Record<string, any[]> = {};
+    trip.itinerary_days.forEach((day: any) => {
+      map[day.id] = day.activities ? [...day.activities] : [];
+    });
+    setActivitiesByDay(map);
+  }, [trip]);
+
   // Function to add a new activity to the local state
   const handleActivityAdded = (newActivity: any, dayId: string) => {
-    setTrip((prevTrip: any) => ({
-      ...prevTrip,
-      itinerary_days: prevTrip.itinerary_days?.map((day: any) => 
-        day.id === dayId 
-          ? { ...day, activities: [...(day.activities || []), newActivity] }
-          : day
-      ) || []
-    }));
+    setTrip((prevTrip: any) => {
+      if (!prevTrip) return prevTrip;
+      return {
+        ...prevTrip,
+        itinerary_days: prevTrip.itinerary_days?.map((day: any) => 
+          day.id === dayId 
+            ? { ...day, activities: [...(day.activities || []), newActivity] }
+            : day
+        ) || []
+      };
+    });
   };
 
   // Function to remove an activity from the local state
   const handleActivityDeleted = (activityId: string, dayId: string) => {
-    setTrip((prevTrip: any) => ({
-      ...prevTrip,
-      itinerary_days: prevTrip.itinerary_days?.map((day: any) => 
-        day.id === dayId 
-          ? { ...day, activities: day.activities?.filter((activity: any) => activity.id !== activityId) || [] }
-          : day
-      ) || []
-    }));
+    setTrip((prevTrip: any) => {
+      if (!prevTrip) return prevTrip;
+      return {
+        ...prevTrip,
+        itinerary_days: prevTrip.itinerary_days?.map((day: any) => 
+          day.id === dayId 
+            ? { ...day, activities: day.activities?.filter((activity: any) => activity.id !== activityId) || [] }
+            : day
+        ) || []
+      };
+    });
   };
 
+  const handleDeleteActivity = async (activityId: string, dayId: string) => {
+    try {
+      const res = await fetch(`/api/activities/${activityId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete activity");
+      toast.success("Activity deleted");
+      handleActivityDeleted(activityId, dayId);
+      setDeleteDialog(null);
+    } catch (err) {
+      toast.error("Failed to delete activity");
+      console.error(err);
+    }
+  };
+
+  const handleDeleteTrip = async (tripId: string) => {
+    try { 
+      const res = await fetch(`/api/trips/${tripId}`, { 
+        method: 'DELETE' 
+      });
+      if (!res.ok) throw new Error("Failed to delete trip");
+      toast.success("Trip deleted");
+      setDeleteDialog(null);
+      router.push('/dashboard');
+    } catch (err) {
+      toast.error("Failed to delete trip");
+      console.error(err);
+    }
+  };
+
+  // Early return after all hooks are called
   if (!trip) {
     return (
       <>
@@ -123,54 +183,6 @@ export function TripPage({ trip: initialTrip }: TripPageProps) {
         return "bg-slate-50 text-slate-700 border-slate-200";
     }
   };
-
-  const handleDeleteActivity = async (activityId: string, dayId: string) => {
-    try {
-      const res = await fetch(`/api/activities/${activityId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete activity");
-      toast.success("Activity deleted");
-      handleActivityDeleted(activityId, dayId);
-      setDeleteDialog(null);
-    } catch (err) {
-      toast.error("Failed to delete activity");
-      console.error(err);
-    }
-  };
-
-  const handleDeleteTrip = async (tripId: string) => {
-    try { 
-      const res = await fetch(`/api/trips/${tripId}`, { 
-        method: 'DELETE' 
-      });
-      if (!res.ok) throw new Error("Failed to delete trip");
-      toast.success("Trip deleted");
-      setDeleteDialog(null);
-      router.push('/dashboard');
-    } catch (err) {
-      toast.error("Failed to delete trip");
-      console.error(err);
-    }
-  };
-
-  const [activitiesByDay, setActivitiesByDay] = useState(() => {
-    // Map day.id to a copy of its activities array
-    const map: Record<string, any[]> = {};
-    trip.itinerary_days?.forEach((day: any) => {
-      map[day.id] = day.activities ? [...day.activities] : [];
-    });
-    return map;
-  });
-
-  useEffect(() => {
-    // Sync activitiesByDay if trip prop changes
-    const map: Record<string, any[]> = {};
-    trip.itinerary_days?.forEach((day: any) => {
-      map[day.id] = day.activities ? [...day.activities] : [];
-    });
-    setActivitiesByDay(map);
-  }, [trip]);
 
   // Sortable Activity Item
   function SortableActivity({ activity, dayId }: { activity: any; dayId: string }) {

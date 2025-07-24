@@ -10,7 +10,13 @@ import Image from "next/image"
 import { format, isValid } from "date-fns"
 import { useState } from "react"
 
-export function TripCard({ trip }: { trip: any }) {
+interface TripCardProps {
+  trip: any;
+}
+
+export type { TripCardProps };
+
+export function TripCard({ trip }: TripCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
 
   const startDate = new Date(trip.startDate || trip.start_date)

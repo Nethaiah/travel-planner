@@ -21,10 +21,9 @@ interface AddActivityFormProps {
   dayId: string
   onSuccess?: () => void
   onCancel?: () => void
-  onSubmitActivity?: (data: ActivityFormData) => Promise<void>
 }
 
-export function AddActivityForm({ dayId, onSuccess, onCancel, onSubmitActivity }: AddActivityFormProps) {
+export function AddActivityForm({ dayId, onSuccess, onCancel }: AddActivityFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { data: session, isPending } = useSession()
@@ -61,20 +60,14 @@ export function AddActivityForm({ dayId, onSuccess, onCancel, onSubmitActivity }
     setIsLoading(true)
     setError(null)
     try {
-      // Validate with zod (already done by useForm, but double check for type safety)
-      // If a custom onSubmitActivity is provided, use it
-      if (onSubmitActivity) {
-        await onSubmitActivity(data)
-      } else {
-        // Default: call server action
-        await createActivity({ ...data, dayId })
-      }
-      reset()
-      toast.success("Activity added successfully! 🎉", { duration: 3000, position: "bottom-right" })
-      router.refresh()
+      const activity = await createActivity({ ...data, dayId })
+      toast.success("Activity added successfully! 🎉", {
+        duration: 3000,
+        position: "bottom-right"
+      })
       onSuccess?.()
     } catch (err: any) {
-      setError(err?.message || "An error occurred")
+      setError(err?.message || "Failed to add activity. Please try again.")
     } finally {
       setIsLoading(false)
     }

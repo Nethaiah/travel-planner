@@ -3,9 +3,10 @@ import { deleteActivity } from "@/app/server/tripActions";
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    await deleteActivity(params.id);
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to delete activity" }, { status: 500 });
+    const { id } = await params;
+    const result = await deleteActivity(id);
+    return NextResponse.json(result);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-} 
+}

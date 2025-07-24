@@ -48,6 +48,7 @@ export type { TripPageProps };
 
 export function TripPage({ trip }: TripPageProps) {
   const [showAddActivity, setShowAddActivity] = useState<string | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ activityId: string; dayId: string } | null>(null);
   const router = useRouter();
   const { data: session, isPending } = useSession()
   
@@ -66,7 +67,7 @@ export function TripPage({ trip }: TripPageProps) {
             <div className="text-center">
               <h1 className="text-2xl font-medium text-slate-900 mb-4">Trip not found</h1>
               <p className="text-slate-600 mb-4">The trip you're looking for doesn't exist.</p>
-              <Button onClick={() => router.push('/dashboard')} variant="outline" className="bg-blue-600 hover:bg-blue-700 text-white border-0">
+              <Button onClick={() => router.push('/dashboard')} className="bg-blue-600 hover:bg-blue-700 text-white border-0">
                 Back to Dashboard
               </Button>
             </div>
@@ -93,8 +94,6 @@ export function TripPage({ trip }: TripPageProps) {
     }
   };
 
-  const [deleteDialog, setDeleteDialog] = useState<{ activityId: string; dayId: string } | null>(null);
-
   const handleDeleteActivity = async (activityId: string, dayId: string) => {
     try {
       const res = await fetch(`/api/activities/${activityId}`, {
@@ -103,7 +102,6 @@ export function TripPage({ trip }: TripPageProps) {
       if (!res.ok) throw new Error("Failed to delete activity");
       toast.success("Activity deleted");
       setDeleteDialog(null);
-      router.refresh();
     } catch (err) {
       toast.error("Failed to delete activity");
       console.error(err);

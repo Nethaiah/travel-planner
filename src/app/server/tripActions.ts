@@ -266,6 +266,7 @@ export async function createActivity(data: ActivityFormData & { dayId: string })
         category: data.category ?? "activity",
       },
     })
+    
     return activity
   } catch (error) {
     console.error("Database error creating activity:", error)
